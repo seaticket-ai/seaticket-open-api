@@ -1,0 +1,491 @@
+openapi: 3.0.3
+info:
+  title: SeaTicket Project API Tokens
+  description: |-
+    Project API token management and token-based connection access.
+  version: '1.0'
+servers:
+  - url: https://{server}
+    variables:
+      server:
+        default: cloud.seaticket.com
+
+x-readme:
+  explorer-enabled: true
+  metrics-enabled: false
+  proxy-enabled: false
+
+components:
+  securitySchemes:
+    AccountTokenAuth:
+      type: http
+      scheme: bearer
+      description: This is the Account-Token for authentication.
+
+  parameters:
+    project_uuid:
+      name: project_uuid
+      in: path
+      description: The unique identifier of a project
+      required: true
+      schema:
+        type: string
+    token_id:
+      name: token_id
+      in: path
+      description: The unique identifier of a project API token
+      required: true
+      schema:
+        type: integer
+    view_id:
+      name: view_id
+      in: query
+      description: The unique view identifier
+      required: true
+      schema:
+        type: string
+    start:
+      name: start
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 0
+    limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 1000
+    page:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 1
+    per_page:
+      name: per_page
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 100
+
+  schemas:
+    ProjectAPIToken:
+      type: object
+      description: Project API token information.
+      properties:
+        id:
+          type: integer
+          description: Token id.
+        app_name:
+          type: string
+          description: Application name bound to the token.
+        api_token:
+          type: string
+          description: The raw API token string.
+        generated_by:
+          type: string
+          description: Username who created the token.
+        generated_at:
+          type: string
+          format: date-time
+          description: Token creation time.
+        last_access:
+          type: string
+          format: date-time
+          description: Last access time.
+        permission:
+          type: string
+          description: Token permission level.
+      example:
+        id: 1
+        app_name: BI Dashboard
+        api_token: pt_9f3c7c2f
+        generated_by: alice@example.com
+        generated_at: '2026-05-27T09:00:00Z'
+        last_access: '2026-05-27T10:00:00Z'
+        permission: read
+    ProjectConnectionRecord:
+      type: object
+      description: Connection summary record returned by token endpoints.
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        type:
+          type: string
+        config:
+          type: object
+        modifier:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        indexed_at:
+          type: string
+          format: date-time
+        last_sync_time:
+          type: string
+          format: date-time
+        status:
+          type: string
+        is_active:
+          type: boolean
+        ai_status:
+          type: string
+        last_ai_processing_time:
+          type: string
+          format: date-time
+        ai_indexed_at:
+          type: string
+          format: date-time
+        content_vector_indexed_at:
+          type: string
+          format: date-time
+        content_vector_status:
+          type: string
+      example:
+        id: 7
+        name: GitHub Issues
+        type: github_issue
+        config:
+          installation_id: 123456
+          repository: https://github.com/org/repo
+        modifier: alice@example.com
+        created_at: '2026-05-27T09:00:00Z'
+        indexed_at: '2026-05-27T09:05:00Z'
+        last_sync_time: '2026-05-27T09:10:00Z'
+        status: '{"last_sync_status":"success"}'
+        is_active: true
+        ai_status: '{"last_ai_processing_status":"pending"}'
+        last_ai_processing_time: ''
+        ai_indexed_at: ''
+        content_vector_indexed_at: ''
+        content_vector_status: ''
+    ProjectConnectionRow:
+      oneOf:
+        - type: object
+          additionalProperties: true
+        - type: array
+          items:
+            type: object
+      description: Connection row detail returned by token row-detail endpoint. Discourse and GitHub replies return a list, while Site returns an object.
+      example:
+        _pk: 3
+        title: Issue title
+        content: Issue body
+        linked_ticket: 42
+
+paths:
+  /api/v1/project/{project_uuid}/api-tokens/:
+    get:
+      tags:
+        - API tokens
+      summary: List project API tokens
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  api_tokens:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProjectAPIToken'
+              example:
+                api_tokens:
+                  - id: 1
+                    app_name: BI Dashboard
+                    api_token: pt_9f3c7c2f
+                    generated_by: alice@example.com
+                    generated_at: '2026-05-27T09:00:00Z'
+                    last_access: '2026-05-27T10:00:00Z'
+                    permission: read
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found
+        '500':
+          description: Internal Server Error
+    post:
+      tags:
+        - API tokens
+      summary: Create a project API token
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - app_name
+                - permission
+              properties:
+                app_name:
+                  type: string
+                permission:
+                  type: string
+              example:
+                app_name: Analytics
+                permission: read
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectAPIToken'
+              example:
+                id: 2
+                app_name: Analytics
+                api_token: pt_12345678
+                generated_by: alice@example.com
+                generated_at: '2026-05-27T09:30:00Z'
+                last_access: '2026-05-27T09:30:00Z'
+                permission: read
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found
+        '500':
+          description: Internal Server Error
+
+  /api/v1/project/{project_uuid}/api-tokens/{token_id}/:
+    put:
+      tags:
+        - API tokens
+      summary: Update a project API token
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/token_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - permission
+              properties:
+                permission:
+                  type: string
+              example:
+                permission: write
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectAPIToken'
+              example:
+                id: 2
+                app_name: Analytics
+                api_token: pt_12345678
+                generated_by: alice@example.com
+                generated_at: '2026-05-27T09:30:00Z'
+                last_access: '2026-05-27T10:30:00Z'
+                permission: write
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied
+        '404':
+          description: API token not found
+        '500':
+          description: Internal Server Error
+    delete:
+      tags:
+        - API tokens
+      summary: Delete a project API token
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/token_id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+              example:
+                success: true
+        '403':
+          description: Permission denied
+        '404':
+          description: API token not found
+        '500':
+          description: Internal Server Error
+
+  /api/v1/project/connection-list/:
+    get:
+      tags:
+        - API tokens
+      summary: List project connections by API token
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/per_page'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  records:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProjectConnectionRecord'
+              example:
+                records:
+                  - id: 7
+                    name: GitHub Issues
+                    type: github_issue
+                    config:
+                      installation_id: 123456
+                      repository: https://github.com/org/repo
+                    modifier: alice@example.com
+                    created_at: '2026-05-27T09:00:00Z'
+                    indexed_at: '2026-05-27T09:05:00Z'
+                    last_sync_time: '2026-05-27T09:10:00Z'
+                    status: '{"last_sync_status":"success"}'
+                    is_active: true
+                    ai_status: '{"last_ai_processing_status":"pending"}'
+                    last_ai_processing_time: ''
+                    ai_indexed_at: ''
+                    content_vector_indexed_at: ''
+                    content_vector_status: ''
+        '403':
+          description: Permission denied or invalid API token
+        '404':
+          description: Project not found or deleted
+        '500':
+          description: Internal Server Error
+
+  /api/v1/project/connection-details/:
+    get:
+      tags:
+        - API tokens
+      summary: Get connection records by API token
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/view_id'
+        - $ref: '#/components/parameters/start'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  records:
+                    type: array
+                    items:
+                      type: object
+              example:
+                records:
+                  - _pk: 1
+                    title: Issue title
+                    content: Issue body
+                    state: open
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied or invalid API token
+        '404':
+          description: Project not found or connection/view not found
+        '500':
+          description: Internal Server Error
+
+  /api/v1/project/connection-row-details/:
+    get:
+      tags:
+        - API tokens
+      summary: Get single row details by API token
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: _pk
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: url
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  row_details:
+                    $ref: '#/components/schemas/ProjectConnectionRow'
+              example:
+                row_details:
+                  _pk: 1
+                  title: Issue title
+                  content: Issue body
+                  linked_ticket: 42
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied or invalid API token
+        '404':
+          description: Project not found or connection not found
+        '500':
+          description: Internal Server Error

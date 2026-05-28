@@ -1,0 +1,83 @@
+openapi: 3.0.3
+info:
+  title: SeaTicket Project Webhooks
+  description: |-
+    Webhook entry points for GitHub and Discourse integrations.
+  version: '1.0'
+servers:
+  - url: https://{server}
+    variables:
+      server:
+        default: cloud.seaticket.com
+
+x-readme:
+  explorer-enabled: true
+  metrics-enabled: false
+  proxy-enabled: false
+
+paths:
+  /webhook/github/:
+    post:
+      tags:
+        - Webhooks
+      summary: GitHub webhook receiver
+      description: Handle GitHub issue and installation webhooks. Required headers include `X-GitHub-Event` and `X-Hub-Signature-256`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                success: true
+        '400':
+          description: Bad Request
+        '403':
+          description: Signature verification failed
+        '404':
+          description: GitHub app installation not found
+        '500':
+          description: Internal Server Error
+
+  /webhook/discourse/:
+    post:
+      tags:
+        - Webhooks
+      summary: Discourse webhook receiver
+      description: Handle Discourse webhook events for a connection. Requires `connection_id` query parameter and `X-Discourse-Event` / `X-Discourse-Event-Signature` headers.
+      parameters:
+        - name: connection_id
+          in: query
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                success: true
+        '400':
+          description: Bad Request
+        '403':
+          description: Signature verification failed
+        '404':
+          description: Connection not found
+        '500':
+          description: Internal Server Error

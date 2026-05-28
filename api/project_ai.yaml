@@ -1,0 +1,420 @@
+openapi: 3.0.3
+info:
+  title: SeaTicket Project AI API
+  description: |-
+    AI-powered conversion, analysis, and similarity endpoints for SeaTicket projects.
+  version: '1.0'
+servers:
+  - url: https://{server}
+    variables:
+      server:
+        default: cloud.seaticket.com
+
+x-readme:
+  explorer-enabled: true
+  metrics-enabled: false
+  proxy-enabled: false
+
+components:
+  securitySchemes:
+    AccountTokenAuth:
+      type: http
+      scheme: bearer
+      description: This is the Account-Token for authentication.
+
+  parameters:
+    project_uuid:
+      name: project_uuid
+      in: path
+      description: The unique identifier of a project
+      required: true
+      schema:
+        type: string
+    task_id:
+      name: task_id
+      in: path
+      description: The unique identifier of an embedding analysis task
+      required: true
+      schema:
+        type: string
+
+  schemas:
+    AIRecordToTicketResponse:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Suggested ticket title.
+        content:
+          type: string
+          description: Suggested ticket content.
+        related_url:
+          type: string
+          description: Original source URL.
+        linked_connection_records:
+          type: array
+          items:
+            type: string
+          description: Linked connection record ids in `connectionId_recordId` format.
+      example:
+        title: Login issue
+        content: User reports that login fails after password reset.
+        related_url: https://example.com/issues/123
+        linked_connection_records:
+          - '7_3'
+    AIPortalIssueToTicketResponse:
+      type: object
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+        related_url:
+          type: string
+        linked_connection_records:
+          type: array
+          items:
+            type: string
+      example:
+        title: Portal issue
+        content: Portal issue summary.
+        related_url: /portal/7/issue/123
+        linked_connection_records:
+          - portal_123
+    AITicketToKBResponse:
+      type: object
+      properties:
+        kb_title:
+          type: string
+          description: Suggested knowledge base title.
+        kb_content:
+          type: string
+          description: Suggested knowledge base content.
+      example:
+        kb_title: Login troubleshooting
+        kb_content: Steps to diagnose and fix login failures.
+    TaskIdResponse:
+      type: object
+      properties:
+        task_id:
+          type: string
+          description: Background task id.
+      example:
+        task_id: job_123
+    RelatedRecordsResponse:
+      type: object
+      properties:
+        related_records:
+          type: array
+          items:
+            type: object
+          description: Ranked related records.
+      example:
+        related_records:
+          - type: ticket
+            _id: 2
+            title: Same issue
+            content: Similar login failure.
+            modified_time: '2026-05-27T09:00:00Z'
+          - type: github_issue
+            _id: 9
+            connection_id: 7
+            title: Similar GitHub issue
+            content: Root cause appears to be the same.
+            modified_time: '2026-05-26T08:00:00Z'
+    TaskStatusResponse:
+      type: object
+      additionalProperties: true
+      example:
+        task_id: job_123
+        status: success
+        progress: 100
+
+paths:
+  /api/v1/ai/convert-record-to-ticket/:
+    post:
+      tags:
+        - AI
+      summary: Convert a record to ticket content
+      security:
+        - AccountTokenAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - project_uuid
+                - connection_id
+                - record_id
+              properties:
+                project_uuid:
+                  type: string
+                connection_id:
+                  type: integer
+                record_id:
+                  type: integer
+              example:
+                project_uuid: 7a358454-2999-47c0-a68d-1087e7ab2d3b
+                connection_id: 7
+                record_id: 3
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIRecordToTicketResponse'
+              example:
+                title: Login issue
+                content: User reports that login fails after password reset.
+                related_url: https://example.com/issues/123
+                linked_connection_records:
+                  - '7_3'
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied
+        '404':
+          description: Project, connection, or record not found
+        '402':
+          description: AI credit not enough
+        '500':
+          description: Internal Server Error
+
+  /api/v1/ai/convert-portal-issue-to-ticket/:
+    post:
+      tags:
+        - AI
+      summary: Convert a portal issue to ticket content
+      security:
+        - AccountTokenAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - project_uuid
+                - issue_id
+              properties:
+                project_uuid:
+                  type: string
+                issue_id:
+                  type: integer
+              example:
+                project_uuid: 7a358454-2999-47c0-a68d-1087e7ab2d3b
+                issue_id: 123
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIPortalIssueToTicketResponse'
+              example:
+                title: Portal issue
+                content: Portal issue summary.
+                related_url: /portal/7/issue/123
+                linked_connection_records:
+                  - portal_123
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied
+        '404':
+          description: Project or issue not found
+        '402':
+          description: AI credit not enough
+        '500':
+          description: Internal Server Error
+
+  /api/v1/ai/convert-ticket-to-knowledge-base/:
+    post:
+      tags:
+        - AI
+      summary: Convert ticket content to knowledge base content
+      security:
+        - AccountTokenAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - project_uuid
+              properties:
+                project_uuid:
+                  type: string
+                ticket_title:
+                  type: string
+                ticket_content:
+                  type: string
+                ticket_comments:
+                  type: array
+                  items:
+                    type: object
+              example:
+                project_uuid: 7a358454-2999-47c0-a68d-1087e7ab2d3b
+                ticket_title: Login issue
+                ticket_content: User reports that login fails after password reset.
+                ticket_comments:
+                  - creator: bob@example.com
+                    created_time: '2026-05-27T08:00:00Z'
+                    content: I also saw this issue.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AITicketToKBResponse'
+              example:
+                kb_title: Login troubleshooting
+                kb_content: Steps to diagnose and fix login failures.
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied
+        '404':
+          description: Project or workspace not found
+        '402':
+          description: AI credit not enough
+        '500':
+          description: Internal Server Error
+
+  /api/v1/ai/embedding-analysis/:
+    post:
+      tags:
+        - AI
+      summary: Submit embedding analysis task
+      security:
+        - AccountTokenAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - project_uuid
+                - connection_ids
+              properties:
+                project_uuid:
+                  type: string
+                connection_ids:
+                  type: array
+                  items:
+                    type: integer
+                start_date:
+                  type: string
+                end_date:
+                  type: string
+              example:
+                project_uuid: 7a358454-2999-47c0-a68d-1087e7ab2d3b
+                connection_ids:
+                  - 7
+                  - 8
+                start_date: '2026-05-01'
+                end_date: '2026-05-27'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskIdResponse'
+              example:
+                task_id: job_123
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found
+        '409':
+          description: Task conflict
+        '500':
+          description: Internal Server Error
+
+  /api/v1/ai/embedding-analysis-task-status/{task_id}/:
+    get:
+      tags:
+        - AI
+      summary: Get embedding analysis task status
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/task_id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskStatusResponse'
+              example:
+                task_id: job_123
+                status: success
+                progress: 100
+        '500':
+          description: Internal Server Error
+
+  /api/v1/ai/related-records/:
+    post:
+      tags:
+        - AI
+      summary: Get related records by similarity
+      security:
+        - AccountTokenAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - project_uuid
+              properties:
+                project_uuid:
+                  type: string
+                ticket_id:
+                  type: integer
+                connection_id:
+                  type: integer
+                record_id:
+                  type: integer
+              example:
+                project_uuid: 7a358454-2999-47c0-a68d-1087e7ab2d3b
+                ticket_id: 2
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelatedRecordsResponse'
+              example:
+                related_records:
+                  - type: ticket
+                    _id: 2
+                    title: Same issue
+                    content: Similar login failure.
+                    modified_time: '2026-05-27T09:00:00Z'
+                  - type: github_issue
+                    _id: 9
+                    connection_id: 7
+                    title: Similar GitHub issue
+                    content: Root cause appears to be the same.
+                    modified_time: '2026-05-26T08:00:00Z'
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied
+        '404':
+          description: Project or record not found
+        '500':
+          description: Internal Server Error

@@ -1,0 +1,475 @@
+openapi: 3.0.3
+info:
+  title: SeaTicket Project Agent API
+  description: |-
+    Agent run and GitHub issue type operations for projects.
+  version: '1.0'
+servers:
+  - url: https://{server}
+    variables:
+      server:
+        default: cloud.seaticket.com
+
+x-readme:
+  explorer-enabled: true
+  metrics-enabled: false
+  proxy-enabled: false
+
+components:
+  securitySchemes:
+    AccountTokenAuth:
+      type: http
+      scheme: bearer
+      description: This is the Account-Token for authentication.
+
+  parameters:
+    project_uuid:
+      name: project_uuid
+      in: path
+      description: The unique identifier of a project
+      required: true
+      schema:
+        type: string
+    run_id:
+      name: run_id
+      in: path
+      description: The unique identifier of an agent run
+      required: true
+      schema:
+        type: integer
+    action_id:
+      name: action_id
+      in: path
+      description: The unique identifier of an agent action
+      required: true
+      schema:
+        type: integer
+
+  schemas:
+    AgentAction:
+      type: object
+      description: A grouped agent action.
+      properties:
+        source_type:
+          type: string
+        source_id:
+          type: string
+        source_title:
+          type: string
+        actions:
+          type: array
+          items:
+            type: object
+      example:
+        source_type: ticket
+        source_id: '2'
+        source_title: Login issue
+        actions:
+          - id: 101
+            type: suggest_reply
+            tool_name: suggest_reply
+            content: Thanks for the report.
+            result: ''
+            status: pending
+            suggestion_text: ''
+            sources: []
+            statistics: ''
+            created_at: '2026-05-27T09:00:00Z'
+            executed_at: ''
+    AgentRun:
+      type: object
+      description: Agent run summary with grouped actions.
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+        started_at:
+          type: string
+        finished_at:
+          type: string
+        items_processed:
+          type: integer
+        error_message:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgentAction'
+        events:
+          type: array
+          items:
+            type: object
+      example:
+        id: 9
+        status: running
+        started_at: '2026-05-27T09:00:00Z'
+        finished_at: ''
+        items_processed: 3
+        error_message: ''
+        items:
+          - source_type: ticket
+            source_id: '2'
+            source_title: Login issue
+            actions: []
+        events: []
+    AgentRunListResponse:
+      type: object
+      properties:
+        runs:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgentRun'
+        has_more:
+          type: boolean
+      example:
+        runs:
+          - id: 9
+            status: running
+            started_at: '2026-05-27T09:00:00Z'
+            finished_at: ''
+            items_processed: 3
+            error_message: ''
+            items: []
+            events: []
+        has_more: false
+    AgentActionConfirmResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        action_id:
+          type: integer
+        status:
+          type: string
+        result:
+          type: string
+      example:
+        success: true
+        action_id: 101
+        status: executed
+        result: Reply posted to GitHub issue #42.
+    AgentActionUpdateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        action_id:
+          type: integer
+        content:
+          type: string
+      example:
+        success: true
+        action_id: 101
+        content: Updated reply content
+    AgentActionCancelResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        action_id:
+          type: integer
+        status:
+          type: string
+      example:
+        success: true
+        action_id: 101
+        status: cancelled
+    GithubIssueTypesResponse:
+      type: object
+      properties:
+        issue_types:
+          type: array
+          items:
+            type: object
+        warning:
+          type: string
+      example:
+        issue_types:
+          - id: 1
+            name: Bug
+            color: '#E0F0FF'
+            text_color: '#5A5F66'
+        warning: ''
+    GithubIssueTypesRefreshResponse:
+      type: object
+      properties:
+        added:
+          type: integer
+        added_names:
+          type: array
+          items:
+            type: string
+        updated:
+          type: integer
+        deleted:
+          type: integer
+        issue_types:
+          type: array
+          items:
+            type: object
+      example:
+        added: 1
+        added_names:
+          - Bug
+        updated: 0
+        deleted: 0
+        issue_types:
+          - id: 1
+            name: Bug
+            color: '#E0F0FF'
+            text_color: '#5A5F66'
+
+paths:
+  /api/v1/project/{project_uuid}/agent/runs/:
+    get:
+      tags:
+        - Agent
+      summary: List agent runs
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentRunListResponse'
+              example:
+                runs:
+                  - id: 9
+                    status: running
+                    started_at: '2026-05-27T09:00:00Z'
+                    finished_at: ''
+                    items_processed: 3
+                    error_message: ''
+                    items: []
+                    events: []
+                has_more: false
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found
+        '500':
+          description: Internal Server Error
+
+  /api/v1/project/{project_uuid}/agent/runs/{run_id}/:
+    get:
+      tags:
+        - Agent
+      summary: Get agent run detail
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/run_id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentRun'
+              example:
+                id: 9
+                status: running
+                started_at: '2026-05-27T09:00:00Z'
+                finished_at: ''
+                items_processed: 3
+                error_message: ''
+                items:
+                  - source_type: ticket
+                    source_id: '2'
+                    source_title: Login issue
+                    actions: []
+                events: []
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found or run not found
+        '500':
+          description: Internal Server Error
+
+  /api/v1/project/{project_uuid}/agent/runs/{run_id}/actions/{action_id}/confirm/:
+    post:
+      tags:
+        - Agent
+      summary: Confirm a pending agent action
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/run_id'
+        - $ref: '#/components/parameters/action_id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentActionConfirmResponse'
+              example:
+                success: true
+                action_id: 101
+                status: executed
+                result: Reply posted to GitHub issue #42.
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              example:
+                error_code: mapping_required
+                agent_type: github_issue
+                github_issue_types:
+                  - id: 1
+                    name: Bug
+                    color: '#E0F0FF'
+                    text_color: '#5A5F66'
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found or action not found
+        '500':
+          description: Internal Server Error
+
+  /api/v1/project/{project_uuid}/agent/runs/{run_id}/actions/{action_id}/:
+    patch:
+      tags:
+        - Agent
+      summary: Update a pending agent action
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/run_id'
+        - $ref: '#/components/parameters/action_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - content
+              properties:
+                content:
+                  type: string
+                  description: New content for the pending action.
+              example:
+                content: Updated reply content
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentActionUpdateResponse'
+              example:
+                success: true
+                action_id: 101
+                content: Updated reply content
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found or action not found
+        '500':
+          description: Internal Server Error
+
+  /api/v1/project/{project_uuid}/agent/runs/{run_id}/actions/{action_id}/cancel/:
+    post:
+      tags:
+        - Agent
+      summary: Cancel a pending agent action
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/run_id'
+        - $ref: '#/components/parameters/action_id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentActionCancelResponse'
+              example:
+                success: true
+                action_id: 101
+                status: cancelled
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found or action not found
+        '500':
+          description: Internal Server Error
+
+  /api/v1/project/{project_uuid}/github/issue-types/:
+    get:
+      tags:
+        - Agent
+      summary: List GitHub issue type options
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GithubIssueTypesResponse'
+              example:
+                issue_types:
+                  - id: 1
+                    name: Bug
+                    color: '#E0F0FF'
+                    text_color: '#5A5F66'
+                warning: ''
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found
+        '500':
+          description: Internal Server Error
+    post:
+      tags:
+        - Agent
+      summary: Refresh GitHub issue types
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GithubIssueTypesRefreshResponse'
+              example:
+                added: 1
+                added_names:
+                  - Bug
+                updated: 0
+                deleted: 0
+                issue_types:
+                  - id: 1
+                    name: Bug
+                    color: '#E0F0FF'
+                    text_color: '#5A5F66'
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found
+        '500':
+          description: Internal Server Error

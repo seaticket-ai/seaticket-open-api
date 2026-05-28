@@ -216,7 +216,17 @@ components:
           type: string
           format: date-time
           description: Last modification timestamp
-    
+        _due_date:
+          type: string
+          format: date
+          description: Due date of the ticket
+        _linked_connection_records:
+          type: array
+          nullable: true
+          items:
+            type: object
+          description: Linked connection records
+
     TicketData:
       type: object
       description: Return column key and column value of ticket
@@ -276,6 +286,20 @@ components:
           type: string
           format: date-time
           description: Last modification timestamp
+        closed_time:
+          type: string
+          format: date-time
+          nullable: true
+          description: Closed time of the ticket
+        due_date:
+          type: string
+          format: date
+          nullable: true
+          description: Due date of the ticket
+        linked_connection_records:
+          type: object
+          nullable: true
+          description: Linked connection records information
     
     TicketColumns:
       type: array
@@ -341,9 +365,9 @@ components:
           type: string
           format: date-time
           description: Last modification timestamp
-        deleted:
+        via_agent:
           type: boolean
-          description: Whether the comment is deleted
+          description: Whether the comment was created via agent
 
     TagOption:
       type: object
@@ -507,34 +531,6 @@ components:
           type: string
           description: Error message
 
-    KnowledgeBaseKeysData:
-      type: object
-      description: Return column key and column value of knowledge base record
-      properties:
-        _pk:
-          type: integer
-          description: Primary key of the knowledge base record
-        _title:
-          type: string
-          description: Title of the knowledge base record
-        _content:
-          type: string
-          description: Content of the knowledge base record
-        _creator:
-          type: string
-          description: Creator username
-        _created_time:
-          type: string
-          format: date-time
-          description: Creation timestamp
-        _modified_time:
-          type: string
-          format: date-time
-          description: Last modification timestamp
-        _last_modifier:
-          type: string
-          description: Last modifier username
-
     KnowledgeBaseData:
       type: object
       description: Return column key and column value of knowledge base record
@@ -548,6 +544,12 @@ components:
         content:
           type: string
           description: Content of the knowledge base record
+        tags:
+          type: array
+          nullable: true
+          items:
+            type: string
+          description: List of tag names
         creator:
           type: string
           description: Creator username
@@ -686,6 +688,9 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/TicketColumns'
+                  linked_record_titles:
+                    type: object
+                    description: Titles of linked records keyed by "table_id:row_id"
               example: {
                   "tickets": [
                       {
@@ -890,7 +895,11 @@ paths:
                           "type": "datetime",
                           "data": null
                       }
-                  ]
+                  ],
+                  "linked_record_titles": {
+                      "abc123:row001": "Related Issue #1",
+                      "def456:row002": "Related Document"
+                  }
               }
         '400':
           description: Bad Request
@@ -956,6 +965,14 @@ paths:
                   type: string
                   description: JSON array of tag names
                   example: '["bug", "urgent"]'
+                due_date:
+                  type: string
+                  format: date
+                  description: Due date of the ticket
+                linked_connection_records:
+                  type: string
+                  description: JSON array of connection records to link
+                  example: '[{"table_id":"xxx","row_id":"yyy"}]'
       responses:
         '201':
           description: Created
@@ -966,27 +983,26 @@ paths:
                 properties:
                   ticket:
                     $ref: '#/components/schemas/TicketData'
-              example: {
-                  "ticket": {
-                      "title": "Ticket",
-                      "content": "Ticket content\n",
-                      "state": "open",
-                      "type": "",
-                      "substate": "New",
-                      "priority": 0,
-                      "assignees": [],
-                      "participants": [
-                          "a475f61317b24c50b6fbf7c5f57860f8@auth.local"
-                      ],
-                      "tags": [],
-                      "creator": "a475f61317b24c50b6fbf7c5f57860f8@auth.local",
-                      "comment_count": 0,
-                      "created_time": "2025-12-09T07:17:41.640909+00:00",
-                      "modified_time": "2025-12-09T07:17:41.640909+00:00",
-                      "deleted": false,
-                      "_pk": 201
-                  }
-              }
+              example:
+                ticket:
+                  title: "Ticket"
+                  content: "Ticket content\n"
+                  state: "open"
+                  type: ""
+                  substate: "New"
+                  priority: 0
+                  assignees: []
+                  participants:
+                    - "a475f61317b24c50b6fbf7c5f57860f8@auth.local"
+                  tags: []
+                  creator: "a475f61317b24c50b6fbf7c5f57860f8@auth.local"
+                  comment_count: 0
+                  created_time: "2025-12-08T22:00:22.564009-10:00"
+                  modified_time: "2025-12-08T22:00:22.564009-10:00"
+                  due_date: "2025-12-31"
+                  linked_connection_records: null
+                  comments: []
+                  _pk: 201
         '400':
           description: Bad Request
         '403':
@@ -1035,10 +1051,6 @@ paths:
                 $ref: '#/components/schemas/SuccessResponse'
         '400':
           description: Bad Request
-        '403':
-          description: Permission denied
-        '404':
-          description: Project not found
 
     delete:
       operationId: batchDeleteTickets
@@ -1096,7 +1108,7 @@ paths:
       tags:
         - Tickets
       summary: Get a ticket
-      description: Get detailed information of a specific ticket including replies.
+      description: Get detailed information of a specific ticket including comments.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -1115,7 +1127,7 @@ paths:
                       - $ref: '#/components/schemas/TicketData'
                       - type: object
                         properties:
-                          replies:
+                          comments:
                             type: array
                             items:
                               type: object
@@ -1130,28 +1142,27 @@ paths:
                                   type: string
                                 creator:
                                   type: string
-              example: {
-                    "ticket": {
-                        "_pk": 1,
-                        "title": "Ticket",
-                        "content": "Ticket content\n",
-                        "state": "0001",
-                        "substate": "0010",
-                        "type": null,
-                        "tags": null,
-                        "assignees": null,
-                        "participants": [
-                            "a475f61317b24c50b6fbf7c5f57860f8@auth.local"
-                        ],
-                        "priority": 0,
-                        "creator": "a475f61317b24c50b6fbf7c5f57860f8@auth.local",
-                        "comment_count": 0,
-                        "created_time": "2025-12-08T22:00:22.564009-10:00",
-                        "modified_time": "2025-12-08T22:00:22.564009-10:00",
-                        "closed_time": null,
-                        "deleted": false
-                    }
-                }
+                  linked_connection_records:
+                    type: object
+                    nullable: true
+                    description: Linked connection records information
+              example:
+                ticket:
+                  _pk: 1
+                  title: "Ticket"
+                  content: "Ticket content\n"
+                  state: "0001"
+                  substate: "0010"
+                  type: null
+                  tags: null
+                  assignees: null
+                  participants:
+                    - "a475f61317b24c50b6fbf7c5f57860f8@auth.local"
+                  priority: 0
+                  creator: "a475f61317b24c50b6fbf7c5f57860f8@auth.local"
+                  created_time: "2025-12-08T22:00:22.564009-10:00"
+                  modified_time: "2025-12-08T22:00:22.564009-10:00"
+                  closed_time: null
         '403':
           description: Permission denied
         '404':
@@ -1583,8 +1594,16 @@ paths:
                           }
                       ]
                   },
-                  "types": {},
-                  "tags": {}
+                  "types": {
+                      "options": [
+                          {
+                              "color": "#FFFCB5",
+                              "id": "p49j",
+                              "name": "type1",
+                              "text_color": "#212529"
+                          }
+                      ]
+                  }
               }
         '403':
           description: Permission denied
@@ -1618,19 +1637,14 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/TicketComment'
-              example: {
-                  "ticket_comments": [
-                      {
-                          "_pk": 1,
-                          "ticket_id": 1,
-                          "content": "Ticket comment\n",
-                          "creator": "a475f61317b24c50b6fbf7c5f57860f8@auth.local",
-                          "created_time": "2025-12-08T22:09:16.304459-10:00",
-                          "modified_time": "2025-12-08T22:09:16.304459-10:00",
-                          "deleted": false
-                      }
-                  ]
-              }
+              example:
+                ticket_comments:
+                  - _pk: 1
+                    content: "Ticket comment\n"
+                    creator: "a475f61317b24c50b6fbf7c5f57860f8@auth.local"
+                    created_time: "2025-12-08T22:09:16.304459-10:00"
+                    modified_time: "2025-12-08T22:09:16.304459-10:00"
+                    via_agent: false
         '403':
           description: Permission denied
         '404':
@@ -1641,7 +1655,7 @@ paths:
       tags:
         - Ticket comments
       summary: Create a ticket comment
-      description: Add a comment to a ticket.
+      description: Create a new comment on a specific ticket.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -1659,7 +1673,7 @@ paths:
                 content:
                   type: string
                   description: JSON string containing text, images, and links
-                  example: '{"text": "Comment content", "images": [], "links": []}'
+                  example: '{"text": "Comment text", "images": [], "links": []}'
       responses:
         '201':
           description: Created
@@ -1668,27 +1682,28 @@ paths:
               schema:
                 type: object
                 properties:
-                  ticket_comment:
+                  comment:
                     $ref: '#/components/schemas/TicketComment'
-              example: {
-                  "ticket_comment": {
-                      "_pk": 1,
-                      "ticket_id": 1,
-                      "content": "Ticket comment\n",
-                      "creator": "a475f61317b24c50b6fbf7c5f57860f8@auth.local",
-                      "created_time": "2025-12-08T22:09:16.304459-10:00",
-                      "modified_time": "2025-12-08T22:09:16.304459-10:00",
-                      "deleted": false
-                  }
-              }
+              example:
+                comment:
+                  _pk: 1
+                  ticket_id: 1
+                  content: "Ticket comment\n"
+                  creator: "a475f61317b24c50b6fbf7c5f57860f8@auth.local"
+                  created_time: "2025-12-08T22:09:16.304459-10:00"
+                  modified_time: "2025-12-08T22:09:16.304459-10:00"
+                  via_agent: false
         '400':
-          description: Bad Request
+          description: Bad Request - content invalid
         '403':
           description: Permission denied
         '404':
           description: Ticket not found
         '429':
           description: Too many requests - Cannot be created again within 30 seconds
+        '500':
+          description: Internal Server Error
+
 
   /api/v1/project/{project_uuid}/tickets/{ticket_id}/comments/{comment_id}/:
     put:
@@ -1723,19 +1738,17 @@ paths:
               schema:
                 type: object
                 properties:
-                  ticket_comment:
+                  comment:
                     $ref: '#/components/schemas/TicketComment'
-              example: {
-                  "ticket_comment": {
-                      "_pk": 1,
-                      "ticket_id": 1,
-                      "content": "Ticket comment\n",
-                      "creator": "a475f61317b24c50b6fbf7c5f57860f8@auth.local",
-                      "created_time": "2025-12-08T22:09:16.304459-10:00",
-                      "modified_time": "2025-12-08T22:09:16.304459-10:00",
-                      "deleted": false
-                  }
-              }
+              example:
+                comment:
+                  _pk: 1
+                  ticket_id: 1
+                  content: "Ticket comment\n"
+                  creator: "a475f61317b24c50b6fbf7c5f57860f8@auth.local"
+                  created_time: "2025-12-08T22:09:16.304459-10:00"
+                  modified_time: "2025-12-08T22:09:16.304459-10:00"
+                  via_agent: false
         '400':
           description: Bad Request
         '403':
@@ -1770,496 +1783,6 @@ paths:
           description: Comment not found
 
   # ==================== Ticket Tags ====================
-  /api/v1/project/{project_uuid}/ticket/tags/:
-    get:
-      operationId: listTicketTags
-      tags:
-        - Ticket tags
-      summary: List ticket tags
-      description: List all ticket tags information.
-      security:
-        - AccountTokenAuth: []
-      parameters:
-        - $ref: '#/components/parameters/project_uuid'
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  tags:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/TagOption'
-              example: {
-                    "tags": [
-                        {
-                            "color": "#FFFCB5",
-                            "description": "",
-                            "id": "bfJS",
-                            "name": "tag",
-                            "text_color": "#212529",
-                            "tickets_count": 0
-                        }
-                    ]
-                }
-        '403':
-          description: Permission denied
-        '404':
-          description: Project not found
-
-    post:
-      operationId: createTicketTag
-      tags:
-        - Ticket tags
-      summary: Create a ticket tag
-      description: Create a new ticket tag.
-      security:
-        - AccountTokenAuth: []
-      parameters:
-        - $ref: '#/components/parameters/project_uuid'
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              required:
-                - name
-                - color
-                - text_color
-              properties:
-                name:
-                  type: string
-                  description: Tag name
-                color:
-                  type: string
-                  description: Background color (hex)
-                  example: '#FF5733'
-                text_color:
-                  type: string
-                  description: Text color (hex)
-                  example: '#FFFFFF'
-                description:
-                  type: string
-                  description: Tag description
-      responses:
-        '201':
-          description: Created
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  tag:
-                    $ref: '#/components/schemas/TagOption'
-              example: {
-                "tag": {
-                    "id": "707I",
-                    "name": "test tag",
-                    "color": "#DC82D2",
-                    "text_color": "#FFFFFF",
-                    "description": "tag description"
-                }
-              }
-        '400':
-          description: Bad Request - tag already exists or invalid parameters
-        '403':
-          description: Permission denied
-        '404':
-          description: Project not found
-
-    delete:
-      tags:
-        - Ticket tags
-      summary: Batch delete ticket tags
-      description: Delete multiple ticket tags.
-      security:
-        - AccountTokenAuth: []
-      parameters:
-        - $ref: '#/components/parameters/project_uuid'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - tag_ids
-              properties:
-                tag_ids:
-                  type: array
-                  items:
-                    type: string
-                  description: List of tag IDs to delete
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessResponse'
-        '400':
-          description: Bad Request
-        '403':
-          description: Permission denied
-        '404':
-          description: Project not found
-
-  /api/v1/project/{project_uuid}/ticket/tags/{tag_id}/:
-    get:
-      tags:
-        - Ticket tags
-      summary: Get tickets by tag
-      description: Get all tickets with a specific tag.
-      security:
-        - AccountTokenAuth: []
-      parameters:
-        - $ref: '#/components/parameters/project_uuid'
-        - $ref: '#/components/parameters/tag_id'
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  tickets:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/TicketData'
-                  columns:
-                    type: array
-                    items:
-                      type: object
-              example: {
-                "tickets": [
-                    {
-                        "_pk": 1,
-                        "M38l": "Ticket title",
-                        "zKdY": "Ticket content",
-                        "762N": "0001",
-                        "HFZq": "0010",
-                        "54CI": "p49j",
-                        "DAZ6": [
-                            "0NJH"
-                        ],
-                        "hLfi": null,
-                        "s7II": [
-                            "a475f61317b24c50b6fbf7c5f57860f8@auth.local"
-                        ],
-                        "v9JY": 0,
-                        "w4o2": "a475f61317b24c50b6fbf7c5f57860f8@auth.local",
-                        "WHR9": "2025-12-04T21:47:11.404471-10:00",
-                        "0WAU": "2025-12-05T22:07:32.981513-10:00"
-                    }
-                ],
-                "columns": [
-                    {
-                        "id": "_pk",
-                        "key": "_pk",
-                        "name": "_pk",
-                        "type": "float64",
-                        "data": null,
-                        "table_id": "Mq9d",
-                        "table_name": "tickets",
-                        "base_id": "c7724907-5aa0-4f85-b909-8260ec1b8cfe"
-                    },
-                    {
-                        "id": "M38l",
-                        "key": "M38l",
-                        "name": "title",
-                        "type": "text",
-                        "data": null,
-                        "table_id": "Mq9d",
-                        "table_name": "tickets",
-                        "base_id": "c7724907-5aa0-4f85-b909-8260ec1b8cfe"
-                    },
-                    {
-                        "id": "zKdY",
-                        "key": "zKdY",
-                        "name": "content",
-                        "type": "text",
-                        "data": null,
-                        "table_id": "Mq9d",
-                        "table_name": "tickets",
-                        "base_id": "c7724907-5aa0-4f85-b909-8260ec1b8cfe"
-                    },
-                    {
-                        "id": "762N",
-                        "key": "762N",
-                        "name": "state",
-                        "type": "single-select",
-                        "data": {
-                            "options": [
-                                {
-                                    "color": "#1A7F37",
-                                    "id": "0001",
-                                    "name": "open",
-                                    "text_color": "#FFFFFF"
-                                },
-                                {
-                                    "color": "#8250DF",
-                                    "id": "0002",
-                                    "name": "closed",
-                                    "text_color": "#FFFFFF"
-                                }
-                            ]
-                        },
-                        "table_id": "Mq9d",
-                        "table_name": "tickets",
-                        "base_id": "c7724907-5aa0-4f85-b909-8260ec1b8cfe"
-                    },
-                    {
-                        "id": "HFZq",
-                        "key": "HFZq",
-                        "name": "substate",
-                        "type": "single-select",
-                        "data": {
-                            "cascade_column_key": "",
-                            "cascade_settings": {
-                                "0001": [
-                                    "0010",
-                                    "0011",
-                                    "0012"
-                                ],
-                                "0002": [
-                                    "0013",
-                                    "0014",
-                                    "0015"
-                                ]
-                            },
-                            "options": [
-                                {
-                                    "color": "#59CB74",
-                                    "id": "0010",
-                                    "name": "New",
-                                    "text_color": "#FFFFFF"
-                                },
-                                {
-                                    "color": "#1A7F37",
-                                    "id": "0011",
-                                    "name": "Reopen",
-                                    "text_color": "#FFFFFF"
-                                },
-                                {
-                                    "color": "#46A1FD",
-                                    "id": "0012",
-                                    "name": "Working on",
-                                    "text_color": "#FFFFFF"
-                                },
-                                {
-                                    "color": "#8250DF",
-                                    "id": "0013",
-                                    "name": "Completed",
-                                    "text_color": "#FFFFFF"
-                                },
-                                {
-                                    "color": "#59636E",
-                                    "id": "0014",
-                                    "name": "Not planned",
-                                    "text_color": "#FFFFFF"
-                                },
-                                {
-                                    "color": "#59636E",
-                                    "id": "0015",
-                                    "name": "Duplicate",
-                                    "text_color": "#FFFFFF"
-                                }
-                            ]
-                        },
-                        "table_id": "Mq9d",
-                        "table_name": "tickets",
-                        "base_id": "c7724907-5aa0-4f85-b909-8260ec1b8cfe"
-                    },
-                    {
-                        "id": "54CI",
-                        "key": "54CI",
-                        "name": "type",
-                        "type": "single-select",
-                        "data": {
-                            "options": [
-                                {
-                                    "color": "#FFFCB5",
-                                    "id": "p49j",
-                                    "name": "type1",
-                                    "text_color": "#212529"
-                                }
-                            ]
-                        },
-                        "table_id": "Mq9d",
-                        "table_name": "tickets",
-                        "base_id": "c7724907-5aa0-4f85-b909-8260ec1b8cfe"
-                    },
-                    {
-                        "id": "DAZ6",
-                        "key": "DAZ6",
-                        "name": "tags",
-                        "type": "multiple-select",
-                        "data": {
-                            "options": [
-                                {
-                                    "color": "#F4667C",
-                                    "description": "",
-                                    "id": "0NJH",
-                                    "name": "tag1",
-                                    "text_color": "#FFFFFF"
-                                },
-                                {
-                                    "color": "#FFFCB5",
-                                    "description": "",
-                                    "id": "Q2Qi",
-                                    "name": "1",
-                                    "text_color": "#212529"
-                                },
-                                {
-                                    "color": "#DC82D2",
-                                    "description": "tag description",
-                                    "id": "707I",
-                                    "name": "test tag",
-                                    "text_color": "#FFFFFF"
-                                }
-                            ]
-                        },
-                        "table_id": "Mq9d",
-                        "table_name": "tickets",
-                        "base_id": "c7724907-5aa0-4f85-b909-8260ec1b8cfe"
-                    },
-                    {
-                        "id": "hLfi",
-                        "key": "hLfi",
-                        "name": "assignees",
-                        "type": "list",
-                        "data": null,
-                        "table_id": "Mq9d",
-                        "table_name": "tickets",
-                        "base_id": "c7724907-5aa0-4f85-b909-8260ec1b8cfe"
-                    },
-                    {
-                        "id": "s7II",
-                        "key": "s7II",
-                        "name": "participants",
-                        "type": "list",
-                        "data": null,
-                        "table_id": "Mq9d",
-                        "table_name": "tickets",
-                        "base_id": "c7724907-5aa0-4f85-b909-8260ec1b8cfe"
-                    },
-                    {
-                        "id": "v9JY",
-                        "key": "v9JY",
-                        "name": "priority",
-                        "type": "int64",
-                        "data": null,
-                        "table_id": "Mq9d",
-                        "table_name": "tickets",
-                        "base_id": "c7724907-5aa0-4f85-b909-8260ec1b8cfe"
-                    },
-                    {
-                        "id": "w4o2",
-                        "key": "w4o2",
-                        "name": "creator",
-                        "type": "text",
-                        "data": null,
-                        "table_id": "Mq9d",
-                        "table_name": "tickets",
-                        "base_id": "c7724907-5aa0-4f85-b909-8260ec1b8cfe"
-                    },
-                    {
-                        "id": "WHR9",
-                        "key": "WHR9",
-                        "name": "created_time",
-                        "type": "datetime",
-                        "data": null,
-                        "table_id": "Mq9d",
-                        "table_name": "tickets",
-                        "base_id": "c7724907-5aa0-4f85-b909-8260ec1b8cfe"
-                    },
-                    {
-                        "id": "0WAU",
-                        "key": "0WAU",
-                        "name": "modified_time",
-                        "type": "datetime",
-                        "data": null,
-                        "table_id": "Mq9d",
-                        "table_name": "tickets",
-                        "base_id": "c7724907-5aa0-4f85-b909-8260ec1b8cfe"
-                    }
-                ]
-              }
-        '403':
-          description: Permission denied
-        '404':
-          description: Tag not found
-
-    put:
-      tags:
-        - Ticket tags
-      summary: Update a ticket tag
-      description: Update an existing ticket tag.
-      security:
-        - AccountTokenAuth: []
-      parameters:
-        - $ref: '#/components/parameters/project_uuid'
-        - $ref: '#/components/parameters/tag_id'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                  description: New tag name
-                color:
-                  type: string
-                  description: New background color
-                text_color:
-                  type: string
-                  description: New text color
-                description:
-                  type: string
-                  description: New description
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessResponse'
-        '400':
-          description: Bad Request
-        '403':
-          description: Permission denied
-        '404':
-          description: Tag not found
-
-    delete:
-      tags:
-        - Ticket tags
-      summary: Delete a ticket tag
-      description: Delete a specific ticket tag.
-      security:
-        - AccountTokenAuth: []
-      parameters:
-        - $ref: '#/components/parameters/project_uuid'
-        - $ref: '#/components/parameters/tag_id'
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessResponse'
-        '403':
-          description: Permission denied
-        '404':
-          description: Tag not found
-
-  # ==================== Ticket Types ====================
   /api/v1/project/{project_uuid}/ticket/types/:
     get:
       tags:
@@ -3239,116 +2762,29 @@ paths:
                   view:
                     $ref: '#/components/schemas/TicketView'
               example: {
-                    "tickets": [
-                        {
-                            "_pk": 1,
-                            "rjiF": "1",
-                            "z10g": "0010",
-                            "O509": null,
-                            "WCRn": null,
-                            "38V6": null,
-                            "SQGI": [
-                                "a475f61317b24c50b6fbf7c5f57860f8@auth.local"
-                            ],
-                            "cAE3": 0,
-                            "xw5R": "a475f61317b24c50b6fbf7c5f57860f8@auth.local"
-                        }
-                    ],
-                    "columns": [
-                        {
-                            "key": "_pk",
-                            "name": "_pk",
-                            "type": "float64",
-                            "data": null
-                        },
-                        {
-                            "key": "rjiF",
-                            "name": "title",
-                            "type": "text",
-                            "data": null
-                        },
-                        {
-                            "key": "z10g",
-                            "name": "substate",
-                            "type": "single-select",
-                            "data": {
-                                "cascade_column_key": "dM50",
-                                "cascade_settings": {
-                                    "0001": [
-                                        "0010",
-                                        "0012"
-                                    ],
-                                    "0002": [
-                                        "0013",
-                                        "0014",
-                                        "0015"
-                                    ]
-                                },
-                                "options": [
-                                    {
-                                        "color": "#59CB74",
-                                        "id": "0010",
-                                        "name": "New",
-                                        "text_color": "#FFFFFF"
-                                    },
-                                    {
-                                        "color": "#46A1FD",
-                                        "id": "0012",
-                                        "name": "Working on",
-                                        "text_color": "#FFFFFF"
-                                    },
-                                    {
-                                        "color": "#8250DF",
-                                        "id": "0013",
-                                        "name": "Completed",
-                                        "text_color": "#FFFFFF"
-                                    },
-                                    {
-                                        "color": "#59636E",
-                                        "id": "0014",
-                                        "name": "Not planned",
-                                        "text_color": "#FFFFFF"
-                                    }
-                                ]
+                    "view": {
+                        "_id": "0000",
+                        "name": "All tickets",
+                        "type": "table",
+                        "basic_filters": [
+                            {
+                                "column_key": "762N",
+                                "filter_predicate": "is_any_of",
+                                "filter_term": ["0001"]
                             }
-                        },
-                        {
-                            "key": "O509",
-                            "name": "type",
-                            "type": "single-select",
-                            "data": null
-                        },
-                        {
-                            "key": "WCRn",
-                            "name": "tags",
-                            "type": "multiple-select",
-                            "data": null
-                        },
-                        {
-                            "key": "38V6",
-                            "name": "assignees",
-                            "type": "list",
-                            "data": null
-                        },
-                        {
-                            "key": "SQGI",
-                            "name": "participants",
-                            "type": "list",
-                            "data": null
-                        },
-                        {
-                            "key": "cAE3",
-                            "name": "priority",
-                            "type": "int64",
-                            "data": null
-                        },
-                        {
-                            "key": "xw5R",
-                            "name": "creator",
-                            "type": "text",
-                            "data": null
-                        }
-                    ]
+                        ],
+                        "filters": [],
+                        "sorts": [
+                            {
+                                "column_key": "WHR9",
+                                "sort_type": "down"
+                            }
+                        ],
+                        "groupbys": [],
+                        "filter_conjunction": "And",
+                        "hidden_columns": [],
+                        "columns_keys": ["_pk", "M38l", "zKdY", "762N", "HFZq", "54CI", "DAZ6", "hLfi", "s7II", "v9JY", "w4o2", "WHR9", "0WAU"]
+                    }
                 }
         '403':
           description: Permission denied
@@ -3618,11 +3054,16 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/KnowledgeBaseColumns'
+                  total_count:
+                    type: integer
+                    description: Total number of records
               example: {
+                "total_count": 2,
                 "records": [
                   {
                     "_pk": 1,
                     "IsV6": "test",
+                    "tags": ["tag1"],
                     "86lo": "test\n",
                     "m3q9": "a5b3a282e7ea4b8f931e311b04f0fceb@auth.local",
                     "hIzW": "2025-12-15T10:47:24.124498+08:00",
@@ -3632,6 +3073,7 @@ paths:
                   {
                     "_pk": 2,
                     "IsV6": "test2",
+                    "tags": null,
                     "86lo": "test2 content\n",
                     "m3q9": "a5b3a282e7ea4b8f931e311b04f0fceb@auth.local",
                     "hIzW": "2025-12-15T11:07:29.031285+08:00",
@@ -3716,7 +3158,7 @@ paths:
       requestBody:
         required: true
         content:
-          multipart/form-data:
+          application/json:
             schema:
               type: object
               required:
@@ -3728,8 +3170,8 @@ paths:
                   description: Title of the knowledge base
                 content:
                   type: string
-                  description: JSON string containing text
-                  example: '{"text": "Knowledge base content"}'
+                  description: Content text of the knowledge base
+                  example: 'Knowledge base content'
       responses:
         '201':
           description: Created
@@ -3743,21 +3185,55 @@ paths:
               example: {
                 "row": {
                   "title": "Knowledge base",
+                  "tags": ["tag1"],
                   "content": "Knowledge base content\n",
                   "creator": "a5b3a282e7ea4b8f931e311b04f0fceb@auth.local",
                   "created_time": "2025-12-15T03:22:52.408259+00:00",
                   "last_modifier": "a5b3a282e7ea4b8f931e311b04f0fceb@auth.local",
                   "modified_time": "2025-12-15T03:22:52.408259+00:00",
-                  "deleted": false,
                   "_pk": 5
                 }
               }
         '400':
-          description: content invalid
-        '403':
-          description: Permission denied
-        '404':
-          description: Project not found
+          description: Bad Request
+
+    put:
+      operationId: batchUpdateKnowledgeBases
+      tags:
+        - Knowledge bases
+      summary: Batch update knowledge bases
+      description: Update multiple knowledge bases at once.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - records_data
+              properties:
+                records_data:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      row_id:
+                        type: string
+                        description: Record ID
+                      row:
+                        type: object
+                        description: Fields to update
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
 
     delete:
       operationId: batchDeleteKnowledgeBases
@@ -3797,17 +3273,30 @@ paths:
         '404':
           description: Project not found
 
-  /api/v1/project/{project_uuid}/knowledge-base/metadata/:
+  /api/v1/project/{project_uuid}/tickets/{ticket_id}/activities/:
     get:
-      operationId: getKnowledgeBaseMetadata
+      operationId: listTicketActivities
       tags:
-        - Knowledge bases
-      summary: Get knowledge base metadata
-      description: Get metadata for knowledge base select columns.
+        - Tickets
+      summary: List ticket activities
+      description: List activity history for a ticket.
       security:
         - AccountTokenAuth: []
       parameters:
         - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/ticket_id'
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
       responses:
         '200':
           description: OK
@@ -3816,35 +3305,29 @@ paths:
               schema:
                 type: object
                 properties:
-                  tags:
-                    type: object
-                    description: Tags column options
-              example: {
-                "tags": {
-                  "options": [
-                    {
-                      "color": "#DAD7FF",
-                      "description": "",
-                      "id": "8M9P",
-                      "name": "abc",
-                      "text_color": "#212529"
-                    },
-                    {
-                      "color": "#FFFCB5",
-                      "description": "tag description",
-                      "id": "v2zm",
-                      "name": "tag name",
-                      "text_color": "#212529"
-                    }
-                  ]
-                }
-              }
+                  activities:
+                    type: array
+                    items:
+                      type: object
+              example:
+                activities:
+                  - id: 1
+                    ticket_id: 10
+                    activity_type: ticket_created
+                    field_key: title
+                    old_value: null
+                    new_value: Login issue
+                    creator: alice@example.com
+                    created_time: '2026-05-27T09:00:00Z'
+        '400':
+          description: Bad Request
         '403':
           description: Permission denied
         '404':
-          description: Project not found
+          description: Project not found or ticket not found
+        '500':
+          description: Internal Server Error
 
-  # ==================== Single Knowledge base ====================
   /api/v1/project/{project_uuid}/knowledge-bases/{knowledge_id}/:
     get:
       operationId: getKnowledgeBase
@@ -3867,19 +3350,16 @@ paths:
                 properties:
                   record:
                     $ref: '#/components/schemas/KnowledgeBaseData'
-              example: {
-                "record": {
-                  "_pk": 5,
-                  "title": "new knowledge base record",
-                  "content": "knowledge base content\n",
-                  "tags": null,
-                  "creator": "a5b3a282e7ea4b8f931e311b04f0fceb@auth.local",
-                  "created_time": "2025-12-17T11:31:07.742348+08:00",
-                  "last_modifier": "a5b3a282e7ea4b8f931e311b04f0fceb@auth.local",
-                  "modified_time": "2025-12-17T11:31:07.742348+08:00",
-                  "deleted": false
-                }
-              }
+              example:
+                record:
+                  _pk: 5
+                  title: "new knowledge base record"
+                  content: "knowledge base content\n"
+                  tags: null
+                  creator: "a5b3a282e7ea4b8f931e311b04f0fceb@auth.local"
+                  created_time: "2025-12-17T11:31:07.742348+08:00"
+                  last_modifier: "a5b3a282e7ea4b8f931e311b04f0fceb@auth.local"
+                  modified_time: "2025-12-17T11:31:07.742348+08:00"
         '403':
           description: Permission denied
         '404':
@@ -3917,10 +3397,138 @@ paths:
                 $ref: '#/components/schemas/SuccessResponse'
         '400':
           description: Bad Request
+
+  /api/v1/project/{project_uuid}/ticket-folders/:
+    post:
+      operationId: createTicketFolder
+      tags:
+        - Tickets
+      summary: Create a ticket folder
+      description: Create a folder for ticket views.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+              example:
+                name: In Progress
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  folder:
+                    type: object
+              example:
+                folder:
+                  _id: f001
+                  name: In Progress
+        '400':
+          description: Bad Request
         '403':
           description: Permission denied
         '404':
-          description: Project not found
+          description: Project not found or ticket views not found
+        '500':
+          description: Internal Server Error
+
+    put:
+      operationId: updateTicketFolder
+      tags:
+        - Tickets
+      summary: Update a ticket folder
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - folder_id
+                - folder_data
+              properties:
+                folder_id:
+                  type: string
+                folder_data:
+                  type: object
+              example:
+                folder_id: f001
+                folder_data:
+                  name: In Progress
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                success: true
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found or folder not found
+        '500':
+          description: Internal Server Error
+
+    delete:
+      operationId: deleteTicketFolder
+      tags:
+        - Tickets
+      summary: Delete a ticket folder
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - folder_id
+              properties:
+                folder_id:
+                  type: string
+              example:
+                folder_id: f001
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                success: true
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found or folder not found
+        '500':
+          description: Internal Server Error
 
   # ==================== Knowledge base Views ====================
   /api/v1/project/{project_uuid}/knowledge-base-views/:
@@ -4214,7 +3822,7 @@ paths:
           description: View or folder not found
 
 
-  /api/v1/project/{project_uuid}/knowledge-base-duplicate-view/:
+  /api/v1/project/{project_uuid}/knowledge-base-duplicate-views/:
     post:
       tags:
         - Knowledge base views
@@ -4269,17 +3877,19 @@ paths:
           description: View not found
 
   # ==================== Knowledge base Tags ====================
-  /api/v1/project/{project_uuid}/knowledge-base/tags/:
+  /api/v1/project/{project_uuid}/tickets/trash/:
     get:
-      operationId: listKnowledgeBaseTags
+      operationId: listTrashTickets
       tags:
-        - Knowledge base tags
-      summary: List knowledge base tags
-      description: List all knowledge base tags information.
+        - Tickets
+      summary: List trashed tickets
+      description: List deleted tickets in a project.
       security:
         - AccountTokenAuth: []
       parameters:
         - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/start'
+        - $ref: '#/components/parameters/limit'
       responses:
         '200':
           description: OK
@@ -4288,93 +3898,33 @@ paths:
               schema:
                 type: object
                 properties:
-                  tags:
+                  tickets:
                     type: array
                     items:
-                      $ref: '#/components/schemas/KnowledgeBaseTagOption'
-              example: {
-                "tags": [
-                  {
-                    "color": "#DAD7FF",
-                    "description": "",
-                    "id": "8M9P",
-                    "name": "abc",
-                    "text_color": "#212529",
-                    "records_count": 1
-                  }
-                ]
-              }
-        '403':
-          description: Permission denied
-        '404':
-          description: Project not found
-
-    post:
-      operationId: createKnowledgeBaseTag
-      tags:
-        - Knowledge base tags
-      summary: Create a knowledge base tag
-      description: Create a new knowledge base tag.
-      security:
-        - AccountTokenAuth: []
-      parameters:
-        - $ref: '#/components/parameters/project_uuid'
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              required:
-                - name
-                - color
-                - text_color
-              properties:
-                name:
-                  type: string
-                  description: Tag name
-                color:
-                  type: string
-                  description: Background color (hex)
-                  example: '#FF5733'
-                text_color:
-                  type: string
-                  description: Text color (hex)
-                  example: '#FFFFFF'
-                description:
-                  type: string
-                  description: Tag description
-      responses:
-        '201':
-          description: Created
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  tag:
-                    $ref: '#/components/schemas/KnowledgeBaseTagOption'
-              example: {
-                "tag": {
-                  "id": "v2zm",
-                  "name": "tag name",
-                  "color": "#FFFCB5",
-                  "text_color": "#212529",
-                  "description": "tag description"
-                }
-              }
+                      $ref: '#/components/schemas/TicketData'
+                  columns:
+                    type: array
+                    items:
+                      type: object
+                  linked_record_titles:
+                    type: object
+              example:
+                tickets: []
+                columns: []
+                linked_record_titles: {}
         '400':
-          description: Bad Request - tag already exists or invalid parameters
+          description: Bad Request
         '403':
           description: Permission denied
         '404':
           description: Project not found
-
-    delete:
+        '500':
+          description: Internal Server Error
+    put:
+      operationId: restoreTrashTickets
       tags:
-        - Knowledge base tags
-      summary: Batch delete knowledge base tags
-      description: Delete multiple knowledge base tags.
+        - Tickets
+      summary: Restore trashed tickets
       security:
         - AccountTokenAuth: []
       parameters:
@@ -4386,13 +3936,14 @@ paths:
             schema:
               type: object
               required:
-                - tag_ids
+                - ticket_ids
               properties:
-                tag_ids:
+                ticket_ids:
                   type: array
                   items:
-                    type: string
-                  description: List of tag IDs to delete
+                    type: integer
+              example:
+                ticket_ids: [1, 2]
       responses:
         '200':
           description: OK
@@ -4400,24 +3951,53 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessResponse'
+              example:
+                success: true
         '400':
           description: Bad Request
         '403':
           description: Permission denied
         '404':
           description: Project not found
-
-  /api/v1/project/{project_uuid}/ticket/knowledge-base/{tag_id}/:
-    get:
+        '500':
+          description: Internal Server Error
+    delete:
+      operationId: purgeTrashTickets
       tags:
-        - Knowledge base tags
-      summary: Get knowledge base records by tag
-      description: Get all knowledge base records with a specific tag.
+        - Tickets
+      summary: Permanently delete trashed tickets
       security:
         - AccountTokenAuth: []
       parameters:
         - $ref: '#/components/parameters/project_uuid'
-        - $ref: '#/components/parameters/tag_id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                success: true
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found
+        '500':
+          description: Internal Server Error
+
+  /api/v1/project/{project_uuid}/knowledge-bases/trash/:
+    get:
+      operationId: listTrashedKnowledgeBases
+      tags:
+        - Knowledge Bases
+      summary: List trashed knowledge base records
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/start'
+        - $ref: '#/components/parameters/limit'
       responses:
         '200':
           description: OK
@@ -4434,178 +4014,41 @@ paths:
                     type: array
                     items:
                       type: object
-              example: {
-                "records": [
-                  {
-                    "_pk": 5,
-                    "xtdu": "new knowledge base record",
-                    "0Ev8": "knowledge base content\n",
-                    "aYRZ": [
-                      "8M9P"
-                    ],
-                    "9QtB": "a5b3a282e7ea4b8f931e311b04f0fceb@auth.local",
-                    "ZeHE": "2025-12-17T11:31:07.742348+08:00",
-                    "tMY2": "a5b3a282e7ea4b8f931e311b04f0fceb@auth.local",
-                    "S927": "2025-12-17T14:30:40.48247+08:00"
-                  }
-                ],
-                "columns": [
-                  {
-                    "id": "_pk",
-                    "key": "_pk",
-                    "name": "_pk",
-                    "type": "float64",
-                    "data": null,
-                    "table_id": "JCtm",
-                    "table_name": "knowledge_base",
-                    "base_id": "86c87bae-5449-4748-9e91-5256f99ed66b"
-                  },
-                  {
-                    "id": "xtdu",
-                    "key": "xtdu",
-                    "name": "title",
-                    "type": "text",
-                    "data": null,
-                    "table_id": "JCtm",
-                    "table_name": "knowledge_base",
-                    "base_id": "86c87bae-5449-4748-9e91-5256f99ed66b"
-                  },
-                  {
-                    "id": "0Ev8",
-                    "key": "0Ev8",
-                    "name": "content",
-                    "type": "text",
-                    "data": null,
-                    "table_id": "JCtm",
-                    "table_name": "knowledge_base",
-                    "base_id": "86c87bae-5449-4748-9e91-5256f99ed66b"
-                  },
-                  {
-                      "id": "aYRZ",
-                      "key": "aYRZ",
-                      "name": "tags",
-                      "type": "multiple-select",
-                      "data": {
-                          "options": [
-                              {
-                                  "color": "#DAD7FF",
-                                  "description": "",
-                                  "id": "8M9P",
-                                  "name": "abc",
-                                  "text_color": "#212529"
-                              },
-                              {
-                                  "color": "#FFFCB5",
-                                  "description": "tag description",
-                                  "id": "v2zm",
-                                  "name": "tag name",
-                                  "text_color": "#212529"
-                              }
-                          ]
-                      },
-                      "table_id": "JCtm",
-                      "table_name": "knowledge_base",
-                      "base_id": "86c87bae-5449-4748-9e91-5256f99ed66b"
-                  },
-                  {
-                      "id": "9QtB",
-                      "key": "9QtB",
-                      "name": "creator",
-                      "type": "text",
-                      "data": null,
-                      "table_id": "JCtm",
-                      "table_name": "knowledge_base",
-                      "base_id": "86c87bae-5449-4748-9e91-5256f99ed66b"
-                  },
-                  {
-                      "id": "ZeHE",
-                      "key": "ZeHE",
-                      "name": "created_time",
-                      "type": "datetime",
-                      "data": null,
-                      "table_id": "JCtm",
-                      "table_name": "knowledge_base",
-                      "base_id": "86c87bae-5449-4748-9e91-5256f99ed66b"
-                  },
-                  {
-                    "id": "tMY2",
-                    "key": "tMY2",
-                    "name": "last_modifier",
-                    "type": "text",
-                    "data": null,
-                    "table_id": "JCtm",
-                    "table_name": "knowledge_base",
-                    "base_id": "86c87bae-5449-4748-9e91-5256f99ed66b"
-                  },
-                  {
-                    "id": "S927",
-                    "key": "S927",
-                    "name": "modified_time",
-                    "type": "datetime",
-                    "data": null,
-                    "table_id": "JCtm",
-                    "table_name": "knowledge_base",
-                    "base_id": "86c87bae-5449-4748-9e91-5256f99ed66b"
-                  }
-                ]
-              }
-        '403':
-          description: Permission denied
-        '404':
-          description: Tag not found
-
-    put:
-      tags:
-        - Knowledge base tags
-      summary: Update a knowledge base tag
-      description: Update an existing knowledge base tag.
-      security:
-        - AccountTokenAuth: []
-      parameters:
-        - $ref: '#/components/parameters/project_uuid'
-        - $ref: '#/components/parameters/tag_id'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                  description: New tag name
-                color:
-                  type: string
-                  description: New background color
-                text_color:
-                  type: string
-                  description: New text color
-                description:
-                  type: string
-                  description: New description
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                records: []
+                columns: []
         '400':
           description: Bad Request
         '403':
           description: Permission denied
         '404':
-          description: Tag not found
-
-    delete:
+          description: Project not found
+        '500':
+          description: Internal Server Error
+    put:
+      operationId: restoreTrashedKnowledgeBases
       tags:
-        - Knowledge base tags
-      summary: Delete a knowledge base tag
-      description: Delete a specific knowledge base tag.
+        - Knowledge Bases
+      summary: Restore trashed knowledge base records
       security:
         - AccountTokenAuth: []
       parameters:
         - $ref: '#/components/parameters/project_uuid'
-        - $ref: '#/components/parameters/tag_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - record_ids
+              properties:
+                record_ids:
+                  type: array
+                  items:
+                    type: integer
+              example:
+                record_ids: [1, 2]
       responses:
         '200':
           description: OK
@@ -4613,7 +4056,191 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessResponse'
+              example:
+                success: true
+        '400':
+          description: Bad Request
         '403':
           description: Permission denied
         '404':
-          description: Tag not found
+          description: Project not found
+        '500':
+          description: Internal Server Error
+
+  /api/v1/project/{project_uuid}/knowledge-bases/convert-view-to-excel/:
+    get:
+      operationId: importKnowledgeBaseExcel
+      tags:
+        - Knowledge Bases
+      summary: Import knowledge bases from Excel
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                file_name:
+                  type: string
+                preview_only:
+                  type: boolean
+              example:
+                file_name: knowledge_base_import_sample.xlsx
+                preview_only: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task_id:
+                    type: string
+              example:
+                task_id: job_123
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found
+        '500':
+          description: Internal Server Error
+
+  /api/v1/project/{project_uuid}/knowledge-bases/export-excel/:
+    get:
+      tags:
+        - Knowledge Bases
+      summary: Export knowledge bases to Excel
+      description: Export knowledge bases to an Excel file.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - name: table_ids
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Comma separated table IDs
+      responses:
+        '200':
+          description: OK
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied
+
+
+  /api/v1/project/{project_uuid}/knowledge-bases/import-excel/:
+    post:
+      tags:
+        - Knowledge Bases
+      summary: Import knowledge bases from Excel
+      description: Import knowledge bases from an Excel file.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The Excel file to import
+                file_name:
+                  type: string
+                  description: Original file name
+                preview_only:
+                  type: boolean
+                  description: If true, only preview the import without applying changes
+              example:
+                file_name: knowledge_base_import_sample.xlsx
+                preview_only: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task_id:
+                    type: string
+                    description: Task ID for tracking import progress
+              example:
+                task_id: job_123
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found
+
+
+  # ==================== Knowledge base Excel IO ====================
+  /api/v1/kb-io-status/:
+    get:
+      tags:
+        - Knowledge Bases
+      summary: Query knowledge base import/export task status
+      description: Query the status of an import or export task using its task ID.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - name: task_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The task ID returned by the import or export API
+          example: abc12345-6789-def0
+      responses:
+        '200':
+          description: OK - Task status and result data
+        '400':
+          description: Bad Request - task_id invalid
+        '500':
+          description: Internal Server Error
+
+  /api/v1/knowledge-bases-import-example/:
+    get:
+      tags:
+        - Knowledge Bases
+      summary: Download knowledge base import example
+      description: Download an example Excel file for importing knowledge bases.
+      security:
+        - AccountTokenAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '403':
+          description: Permission denied
+
