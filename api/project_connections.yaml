@@ -1337,12 +1337,8 @@ paths:
                 view_id:
                   type: string
                   description: View id to duplicate.
-                target_folder_id:
-                  type: string
-                  description: Optional target folder id.
               example:
                 view_id: nc5t
-                target_folder_id: folder-1
       responses:
         '200':
           description: OK
@@ -1393,6 +1389,30 @@ paths:
       responses:
         '200':
           description: OK
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              description: 'attachment; filename="attachments.zip"'
+            ETag:
+              schema:
+                type: string
+              description: ETag for caching support.
+            Cache-Control:
+              schema:
+                type: string
+              description: 'max-age=604800, private'
+        '304':
+          description: Not Modified (ETag matched)
+        '403':
+          description: Permission denied
+        '404':
+          description: Project, connection, email, or ZIP file not found
 
   /api/v1/query-io-status/:
     get:

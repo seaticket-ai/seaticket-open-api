@@ -76,3 +76,9 @@ jobs:
         uses: readmeio/rdme@v10
         with:
           rdme: openapi upload ./api/project_ai.yaml --key=${{ secrets.README_API_KEY }}
+
+      # project portal
+      - name: Project portal 🚀
+        uses: readmeio/rdme@v10
+        with:
+          rdme: openapi upload ./api/project_portal.yaml --key=${{ secrets.README_API_KEY }}

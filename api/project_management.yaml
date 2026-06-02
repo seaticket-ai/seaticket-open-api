@@ -1051,21 +1051,31 @@ paths:
         - Captcha
       summary: Get slide captcha image
       description: |-
-        Returns a base64-encoded JPEG image of a slide captcha puzzle.
+        Returns a raw base64-encoded JPEG image string of a slide captcha puzzle.
+        The client should prepend "data:image/jpeg;base64," to construct a data URI.
         The server stores the correct position in the session for later
         verification via the POST endpoint.
       security:
         - SessionAuth: []
       responses:
         '200':
-          description: OK - Base64 encoded JPEG image bytes
+          description: OK - Raw base64-encoded JPEG image string
           content:
-            image/jpeg:
+            text/plain:
               schema:
                 type: string
-                format: binary
+              example: /9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGB...
         '403':
           description: Feature is not enabled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error_msg:
+                    type: string
+              example:
+                error_msg: Feature is not enabled.
 
     post:
       tags:

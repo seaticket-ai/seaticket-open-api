@@ -60,6 +60,44 @@ components:
           type: array
           items:
             type: object
+            properties:
+              id:
+                type: integer
+              type:
+                type: string
+              tool_name:
+                type: string
+              result:
+                type: string
+              status:
+                type: string
+              suggestion_content:
+                type: string
+              sources:
+                type: array
+                items:
+                  type: object
+              statistics:
+                type: string
+              created_at:
+                type: string
+              executed_at:
+                type: string
+              phase:
+                type: string
+                description: Only included when include_details=true.
+              prompt:
+                type: string
+                description: Only included when include_details=true.
+              step:
+                type: integer
+                description: Only included when include_details=true.
+              tool_arguments:
+                type: string
+                description: Only included when include_details=true.
+              observation:
+                type: string
+                description: Only included when include_details=true.
       example:
         source_type: ticket
         source_id: '2'
@@ -68,10 +106,9 @@ components:
           - id: 101
             type: suggest_reply
             tool_name: suggest_reply
-            content: Thanks for the report.
+            suggestion_content: Thanks for the report.
             result: ''
             status: pending
-            suggestion_text: ''
             sources: []
             statistics: ''
             created_at: '2026-05-27T09:00:00Z'
@@ -156,12 +193,12 @@ components:
           type: boolean
         action_id:
           type: integer
-        content:
+        suggestion_content:
           type: string
       example:
         success: true
         action_id: 101
-        content: Updated reply content
+        suggestion_content: Updated reply content
     AgentActionCancelResponse:
       type: object
       properties:
@@ -230,6 +267,20 @@ paths:
         - AccountTokenAuth: []
       parameters:
         - $ref: '#/components/parameters/project_uuid'
+        - name: page
+          in: query
+          description: Page number for pagination (default 1).
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: Number of runs per page (default 50).
+          required: false
+          schema:
+            type: integer
+            default: 50
       responses:
         '200':
           description: OK
@@ -265,6 +316,15 @@ paths:
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - $ref: '#/components/parameters/run_id'
+        - name: include_details
+          in: query
+          description: When set to 'true', includes additional action fields (phase, prompt, step, tool_arguments, observation).
+          required: false
+          schema:
+            type: string
+            enum:
+              - 'true'
+              - 'false'
       responses:
         '200':
           description: OK
@@ -352,13 +412,13 @@ paths:
             schema:
               type: object
               required:
-                - content
+                - suggestion_content
               properties:
-                content:
+                suggestion_content:
                   type: string
-                  description: New content for the pending action.
+                  description: New suggestion content for the pending action.
               example:
-                content: Updated reply content
+                suggestion_content: Updated reply content
       responses:
         '200':
           description: OK
@@ -369,7 +429,7 @@ paths:
               example:
                 success: true
                 action_id: 101
-                content: Updated reply content
+                suggestion_content: Updated reply content
         '400':
           description: Bad Request
         '403':
@@ -473,3 +533,5 @@ paths:
           description: Project not found
         '500':
           description: Internal Server Error
+        '502':
+          description: Bad Gateway - Failed to fetch issue types from GitHub

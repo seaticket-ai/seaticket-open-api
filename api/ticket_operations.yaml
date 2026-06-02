@@ -2881,7 +2881,7 @@ paths:
       tags:
         - Ticket views
       summary: Move ticket view
-      description: Move a view to another position in the navigation.
+      description: Move a view or folder to another position in the navigation.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -2895,10 +2895,19 @@ paths:
               properties:
                 source_view_id:
                   type: string
-                  description: ID of the view to move
+                  description: ID of the view to move. Required if source_folder_id is not provided.
+                source_folder_id:
+                  type: string
+                  description: ID of the folder containing the view to move, or ID of the folder to move.
                 target_view_id:
                   type: string
-                  description: Target view ID to move before
+                  description: Target view ID to move before. Required if target_folder_id is not provided.
+                target_folder_id:
+                  type: string
+                  description: Target folder ID to move into or before.
+                is_above_folder:
+                  type: boolean
+                  description: When true, place the source above the target folder instead of inside it. Defaults to false.
       responses:
         '200':
           description: OK
@@ -4127,12 +4136,18 @@ paths:
         - AccountTokenAuth: []
       parameters:
         - $ref: '#/components/parameters/project_uuid'
-        - name: table_ids
+        - name: task_id
           in: query
           required: true
           schema:
             type: string
-          description: Comma separated table IDs
+          description: Task ID from the convert-view-to-excel step.
+        - name: view_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: ID of the view to export.
       responses:
         '200':
           description: OK
@@ -4243,4 +4258,3 @@ paths:
                 format: binary
         '403':
           description: Permission denied
-

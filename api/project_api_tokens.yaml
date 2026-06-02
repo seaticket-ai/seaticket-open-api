@@ -20,7 +20,11 @@ components:
     AccountTokenAuth:
       type: http
       scheme: bearer
-      description: This is the Account-Token for authentication.
+      description: Account token for user authentication. Used for management endpoints (create/update/delete API tokens). Obtained by logging into the SeaTicket web app.
+    ProjectAPITokenAuth:
+      type: http
+      scheme: bearer
+      description: Project API token for programmatic connection access. Created via the API token management endpoints. Used for connection-list, connection-details, and connection-row-details endpoints.
 
   parameters:
     project_uuid:
@@ -347,7 +351,7 @@ paths:
         - API tokens
       summary: List project connections by API token
       security:
-        - AccountTokenAuth: []
+        - ProjectAPITokenAuth: []
       parameters:
         - $ref: '#/components/parameters/page'
         - $ref: '#/components/parameters/per_page'
@@ -395,7 +399,7 @@ paths:
         - API tokens
       summary: Get connection records by API token
       security:
-        - AccountTokenAuth: []
+        - ProjectAPITokenAuth: []
       parameters:
         - name: name
           in: query
@@ -443,7 +447,7 @@ paths:
         - API tokens
       summary: Get single row details by API token
       security:
-        - AccountTokenAuth: []
+        - ProjectAPITokenAuth: []
       parameters:
         - name: name
           in: query

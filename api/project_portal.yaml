@@ -1,0 +1,2130 @@
+openapi: 3.0.3
+info:
+  title: SeaTicket Project Portal API
+  description: |-
+    APIs for the SeaTicket support portal, including portal settings, external access,
+    issue submission and management, knowledge base access, file access, and portal chat.
+  version: '1.0'
+servers:
+  - url: https://{server}
+    variables:
+      server:
+        default: cloud.seaticket.com
+
+x-readme:
+  explorer-enabled: true
+  metrics-enabled: false
+  proxy-enabled: false
+
+security:
+  - AccountTokenAuth: []
+
+components:
+  securitySchemes:
+    AccountTokenAuth:
+      type: http
+      scheme: bearer
+      description: This is the Account-Token for authentication.
+
+  parameters:
+    project_uuid:
+      name: project_uuid
+      in: path
+      description: The unique identifier of a project.
+      required: true
+      schema:
+        type: string
+        format: uuid
+    issue_id:
+      name: issue_id
+      in: path
+      description: Portal issue id.
+      required: true
+      schema:
+        type: integer
+    comment_id:
+      name: comment_id
+      in: path
+      description: Portal issue comment id.
+      required: true
+      schema:
+        type: integer
+    view_id:
+      name: view_id
+      in: path
+      description: Portal issue view id.
+      required: true
+      schema:
+        type: string
+    type_id:
+      name: type_id
+      in: path
+      description: Portal issue type option id.
+      required: true
+      schema:
+        type: string
+    substate_id:
+      name: substate_id
+      in: path
+      description: Portal issue substate option id.
+      required: true
+      schema:
+        type: string
+    session_uuid:
+      name: session_uuid
+      in: path
+      description: Portal chat session UUID.
+      required: true
+      schema:
+        type: string
+    token:
+      name: token
+      in: path
+      description: Portal external invitation token.
+      required: true
+      schema:
+        type: string
+        pattern: '^[a-f0-9]{32}$'
+    start:
+      name: start
+      in: query
+      description: Zero-based offset.
+      required: false
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
+    limit:
+      name: limit
+      in: query
+      description: Maximum number of records to return.
+      required: false
+      schema:
+        type: integer
+        default: 1000
+        minimum: 0
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error_msg:
+          type: string
+      example:
+        error_msg: Permission denied.
+    Success:
+      type: object
+      properties:
+        success:
+          type: boolean
+      example:
+        success: true
+    Column:
+      type: object
+      additionalProperties: true
+      description: SeaTable column metadata.
+      example:
+        key: '0000'
+        name: title
+        type: text
+    PortalIssue:
+      type: object
+      additionalProperties: true
+      properties:
+        _pk:
+          type: integer
+        title:
+          type: string
+        content:
+          type: string
+        state:
+          type: string
+          enum: [open, closed]
+        substate:
+          type: string
+          nullable: true
+        type:
+          type: string
+          nullable: true
+        priority:
+          type: integer
+          minimum: 0
+          maximum: 5
+        tags:
+          type: array
+          items:
+            type: integer
+        creator:
+          type: string
+        comment_count:
+          type: integer
+        linked_ticket:
+          type: integer
+          nullable: true
+        created_time:
+          type: string
+          format: date-time
+        modified_time:
+          type: string
+          format: date-time
+        deleted:
+          type: boolean
+      example:
+        _pk: 12
+        title: Cannot log in
+        content: The login page keeps redirecting.
+        state: open
+        substate: New
+        type: Bug
+        priority: 3
+        tags: [1, 2]
+        creator: external_8f5a
+        comment_count: 1
+        linked_ticket: null
+        created_time: '2026-06-02T02:30:00+00:00'
+        modified_time: '2026-06-02T02:30:00+00:00'
+        deleted: false
+    PortalIssueComment:
+      type: object
+      additionalProperties: true
+      properties:
+        _pk:
+          type: integer
+        issue_id:
+          type: integer
+        creator:
+          type: string
+        content:
+          type: string
+        via_agent:
+          type: boolean
+        created_time:
+          type: string
+          format: date-time
+        modified_time:
+          type: string
+          format: date-time
+        deleted:
+          type: boolean
+      example:
+        _pk: 8
+        issue_id: 12
+        creator: external_8f5a
+        content: I can reproduce this in Chrome.
+        via_agent: false
+        created_time: '2026-06-02T02:40:00+00:00'
+        modified_time: '2026-06-02T02:40:00+00:00'
+        deleted: false
+    ContentPayload:
+      type: object
+      required: [text]
+      properties:
+        text:
+          type: string
+        images:
+          type: array
+          items:
+            type: string
+          description: Temporary portal upload URLs returned by the upload-file API.
+        links:
+          type: array
+          items:
+            type: string
+          description: Additional temporary file URLs referenced in rich text content.
+      example:
+        text: The login page keeps redirecting.
+        images:
+          - /upload-file/portal/08c1f4d2-57e3-43c4-bcce-61b781a47c18/screenshot.png
+    SelectOption:
+      type: object
+      additionalProperties: true
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        color:
+          type: string
+        text_color:
+          type: string
+        description:
+          type: string
+      example:
+        id: opt123
+        name: Bug
+        color: '#F4667C'
+        text_color: '#FFFFFF'
+        count: 3
+    PortalIssueView:
+      type: object
+      additionalProperties: true
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        data:
+          type: object
+          additionalProperties: true
+      example:
+        _id: view_1
+        name: Open issues
+        type: table
+        data:
+          filters: []
+          sorts: []
+    PortalSettings:
+      type: object
+      properties:
+        allow_anonymous:
+          type: boolean
+        enable_password_protection:
+          type: boolean
+        show_knowledge_base:
+          type: boolean
+        chat_allowed_sources:
+          $ref: '#/components/schemas/PortalChatAllowedSources'
+        daily_chat_credit_limit:
+          type: integer
+      example:
+        allow_anonymous: true
+        enable_password_protection: false
+        show_knowledge_base: true
+        chat_allowed_sources:
+          connection_ids: [5, 8]
+          extra_sources: [portal_issue, knowledge_base]
+        daily_chat_credit_limit: 50
+    PortalChatAllowedSources:
+      type: object
+      properties:
+        connection_ids:
+          type: array
+          items:
+            oneOf:
+              - type: integer
+              - type: string
+        extra_sources:
+          type: array
+          items:
+            type: string
+      example:
+        connection_ids: [5]
+        extra_sources: [portal_issue, knowledge_base]
+    PortalChatSession:
+      type: object
+      additionalProperties: true
+      properties:
+        session_uuid:
+          type: string
+        session_name:
+          type: string
+        project_uuid:
+          type: string
+        username:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      example:
+        session_uuid: 42d93f3d-5ffb-4418-a5fd-9fc24f01ef1b
+        session_name: Login help
+        project_uuid: 08c1f4d2-57e3-43c4-bcce-61b781a47c18
+        username: external_8f5a
+    PortalChatMessage:
+      type: object
+      additionalProperties: true
+      properties:
+        id:
+          type: string
+        role:
+          type: string
+        content:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+      example:
+        id: msg_123
+        role: assistant
+        content: Please try clearing your browser cache first.
+    PortalChatAttachment:
+      type: object
+      properties:
+        type:
+          type: string
+          example: image
+        name:
+          type: string
+          example: screenshot.png
+        url:
+          type: string
+          example: /upload-file/portal/08c1f4d2-57e3-43c4-bcce-61b781a47c18/screenshot.png
+
+  responses:
+    BadRequest:
+      description: Bad request.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Authentication credentials were not provided or are invalid.
+    Forbidden:
+      description: Permission denied.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalServerError:
+      description: Internal server error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+paths:
+  /api/v1/portal/{project_uuid}/settings/:
+    get:
+      tags: [Portal Settings]
+      summary: Get portal settings
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      responses:
+        '200':
+          description: Portal settings.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortalSettings'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Portal Settings]
+      summary: Update portal settings
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                allow_anonymous:
+                  type: integer
+                  enum: [0, 1]
+                enable_password_protection:
+                  type: integer
+                  enum: [0, 1]
+                show_knowledge_base:
+                  type: integer
+                  enum: [0, 1]
+                password:
+                  type: string
+                  description: Required when enabling password protection for the first time.
+                portal_name:
+                  type: string
+                portal_logo:
+                  type: string
+                  description: Logo URL returned by the portal logo upload API. Send an empty string to remove the logo.
+                chat_allowed_sources:
+                  $ref: '#/components/schemas/PortalChatAllowedSources'
+                daily_chat_credit_limit:
+                  type: integer
+                  minimum: 0
+            example:
+              allow_anonymous: 1
+              enable_password_protection: 0
+              show_knowledge_base: 1
+              portal_name: Customer Support
+              chat_allowed_sources:
+                connection_ids: [5]
+                extra_sources: [portal_issue, knowledge_base]
+              daily_chat_credit_limit: 50
+      responses:
+        '200':
+          description: Settings updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/portal/{project_uuid}/logo/:
+    get:
+      tags: [Portal Files]
+      summary: Get portal logo
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      responses:
+        '200':
+          description: Portal logo file.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Portal Files]
+      summary: Upload portal logo
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Logo uploaded.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  file_url:
+                    type: string
+              example:
+                file_url: /api/v1/portal/08c1f4d2-57e3-43c4-bcce-61b781a47c18/logo/?v=1717312800
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/portal/{project_uuid}/upload-file/:
+    post:
+      tags: [Portal Files]
+      summary: Upload a temporary portal attachment
+      description: Uploads a temporary file that can later be referenced by issue, comment, or chat content.
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Temporary file uploaded.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+              example:
+                url: /upload-file/portal/08c1f4d2-57e3-43c4-bcce-61b781a47c18/screenshot.png
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /upload-file/portal/{project_uuid}/{file_path}:
+    get:
+      tags: [Portal Files]
+      summary: Get a temporary portal attachment
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - name: file_path
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Temporary attachment file.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '304':
+          description: Not modified.
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /file/portal/{project_uuid}/{file_path}:
+    get:
+      tags: [Portal Files]
+      summary: Get a persisted portal attachment
+      description: Only files under portal-visible attachment prefixes can be retrieved.
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - name: file_path
+          in: path
+          required: true
+          schema:
+            type: string
+          example: attachments/portal-issue/12/screenshot.png
+      responses:
+        '200':
+          description: Persisted attachment file.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '304':
+          description: Not modified.
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/portal/{project_uuid}/issues/:
+    get:
+      tags: [Portal Issues]
+      summary: List portal issues in a portal issue view
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - name: view_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/start'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: Portal issues.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  records:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PortalIssue'
+                  columns:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Column'
+                  ticket_pk_to_ticket_title:
+                    type: object
+                    additionalProperties:
+                      type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    post:
+      tags: [Portal Issues]
+      summary: Create a portal issue
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [title, content]
+              properties:
+                title:
+                  type: string
+                content:
+                  type: string
+                  description: JSON-encoded ContentPayload.
+                type:
+                  type: string
+                priority:
+                  type: integer
+                  minimum: 0
+                  maximum: 5
+                tags:
+                  type: string
+                  description: JSON-encoded array of tag ids.
+            example:
+              title: Cannot log in
+              content: '{"text":"The login page keeps redirecting.","images":[]}'
+              type: Bug
+              priority: 3
+              tags: '[1,2]'
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      responses:
+        '201':
+          description: Portal issue created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  portal_issue:
+                    $ref: '#/components/schemas/PortalIssue'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          description: Issue creation rate limited.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags: [Portal Issues]
+      summary: Batch update portal issues
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [issues_data]
+              properties:
+                issues_data:
+                  type: array
+                  items:
+                    type: object
+                    required: [row_id, row]
+                    properties:
+                      row_id:
+                        type: integer
+                      row:
+                        type: object
+                        additionalProperties: true
+            example:
+              issues_data:
+                - row_id: 12
+                  row:
+                    state: closed
+                    substate: Resolved
+      responses:
+        '200':
+          description: Issues updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    delete:
+      tags: [Portal Issues]
+      summary: Soft delete portal issues
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [issue_ids]
+              properties:
+                issue_ids:
+                  type: array
+                  items:
+                    type: integer
+            example:
+              issue_ids: [12, 13]
+      responses:
+        '200':
+          description: Deletion result.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: array
+                    items:
+                      type: integer
+                  failed:
+                    type: array
+                    items:
+                      type: integer
+
+  /api/v1/portal/{project_uuid}/my-issues/:
+    post:
+      tags: [Portal Issues]
+      summary: List issues created by the current portal user
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: false
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                view_id:
+                  type: string
+                  enum: [open, closed]
+                  default: open
+                start:
+                  type: integer
+                  default: 0
+                limit:
+                  type: integer
+                  default: 1000
+                config:
+                  type: string
+                  description: JSON-encoded view filter config.
+      responses:
+        '200':
+          description: Current user's portal issues.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  records:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PortalIssue'
+                  columns:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Column'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/portal/{project_uuid}/issues/{issue_id}/:
+    get:
+      tags: [Portal Issues]
+      summary: Get a portal issue
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/issue_id'
+      responses:
+        '200':
+          description: Portal issue.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  issue:
+                    $ref: '#/components/schemas/PortalIssue'
+                  columns:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Column'
+                  linked_ticket_title:
+                    type: string
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Portal Issues]
+      summary: Update a portal issue
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/issue_id'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                content:
+                  type: string
+                  description: JSON-encoded ContentPayload.
+                state:
+                  type: string
+                  enum: [open, closed]
+                type:
+                  type: string
+                  nullable: true
+                substate:
+                  type: string
+                  nullable: true
+                priority:
+                  type: integer
+                  minimum: 0
+                  maximum: 5
+                tags:
+                  type: string
+                  description: JSON-encoded array of tag ids.
+                linked_ticket:
+                  type: integer
+                  nullable: true
+      responses:
+        '200':
+          description: Updated row data.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  row:
+                    type: object
+                    additionalProperties: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Portal Issues]
+      summary: Soft delete a portal issue
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/issue_id'
+      responses:
+        '200':
+          description: Issue deleted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/portal/{project_uuid}/issues/{issue_id}/comments/:
+    get:
+      tags: [Portal Comments]
+      summary: List portal issue comments
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/issue_id'
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 2
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 25
+      responses:
+        '200':
+          description: Portal issue comments.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  comments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PortalIssueComment'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Portal Comments]
+      summary: Create a portal issue comment
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/issue_id'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content:
+                  type: string
+                  description: JSON-encoded ContentPayload.
+            example:
+              content: '{"text":"I can reproduce this in Chrome.","images":[]}'
+      responses:
+        '201':
+          description: Comment created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  comment:
+                    $ref: '#/components/schemas/PortalIssueComment'
+        '429':
+          description: Comment creation rate limited.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/portal/{project_uuid}/issues/{issue_id}/comments/{comment_id}/:
+    put:
+      tags: [Portal Comments]
+      summary: Update a portal issue comment
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/issue_id'
+        - $ref: '#/components/parameters/comment_id'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content:
+                  type: string
+                  description: JSON-encoded ContentPayload.
+      responses:
+        '200':
+          description: Comment updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  comment:
+                    $ref: '#/components/schemas/PortalIssueComment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          description: Comment update rate limited.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags: [Portal Comments]
+      summary: Delete a portal issue comment
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/issue_id'
+        - $ref: '#/components/parameters/comment_id'
+      responses:
+        '200':
+          description: Comment deleted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /api/v1/portal/{project_uuid}/tags/:
+    get:
+      tags: [Portal Metadata]
+      summary: List portal tags
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/start'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: Portal tags.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  columns:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Column'
+                  tags:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+
+  /api/v1/portal/{project_uuid}/user-list/:
+    post:
+      tags: [Portal Metadata]
+      summary: Get basic user information for portal display
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id_list]
+              properties:
+                user_id_list:
+                  type: array
+                  items:
+                    type: string
+            example:
+              user_id_list:
+                - user@example.com
+      responses:
+        '200':
+          description: User list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_list:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+
+  /api/v1/portal/{project_uuid}/issue/metadata/:
+    get:
+      tags: [Portal Metadata]
+      summary: Get portal issue select field metadata
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      responses:
+        '200':
+          description: Portal issue metadata.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  states:
+                    type: object
+                    additionalProperties: true
+                  substates:
+                    type: object
+                    additionalProperties: true
+                  types:
+                    type: object
+                    additionalProperties: true
+
+  /api/v1/portal/{project_uuid}/knowledge-base-views/:
+    get:
+      tags: [Portal Knowledge Base]
+      summary: List portal-visible knowledge base views
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      responses:
+        '200':
+          description: Knowledge base views.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/portal/{project_uuid}/knowledge-bases/:
+    get:
+      tags: [Portal Knowledge Base]
+      summary: List portal-visible knowledge base records
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - name: view_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/start'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: Knowledge base records.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  records:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  columns:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Column'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/portal/{project_uuid}/knowledge-bases/{knowledge_id}/:
+    get:
+      tags: [Portal Knowledge Base]
+      summary: Get a portal-visible knowledge base record
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - name: knowledge_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Knowledge base record.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  record:
+                    type: object
+                    additionalProperties: true
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/portal/{project_uuid}/external-invitations/:
+    get:
+      tags: [Portal External Users]
+      summary: List portal external invitations
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      responses:
+        '200':
+          description: Invitation list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invite_list:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        token:
+                          type: string
+                        link:
+                          type: string
+                        expire_time:
+                          type: string
+                          format: date-time
+                        email:
+                          type: string
+                        inviter:
+                          type: string
+                        accepted_at:
+                          type: string
+                          format: date-time
+                          nullable: true
+                        created_at:
+                          type: string
+                          format: date-time
+    post:
+      tags: [Portal External Users]
+      summary: Invite an external portal user
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+            example:
+              email: customer@example.com
+      responses:
+        '200':
+          description: Invitation sent.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          description: Email service is not configured.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/portal/{project_uuid}/external-invitations/{token}/:
+    delete:
+      tags: [Portal External Users]
+      summary: Delete a portal external invitation
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/token'
+      responses:
+        '200':
+          description: Invitation deleted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/portal/{project_uuid}/external-users/:
+    get:
+      tags: [Portal External Users]
+      summary: List portal external users
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      responses:
+        '200':
+          description: External users.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        email:
+                          type: string
+                        activated:
+                          type: boolean
+    delete:
+      tags: [Portal External Users]
+      summary: Delete a portal external user
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: External user deleted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /api/v1/portal/{project_uuid}/external-login/send-code/:
+    post:
+      tags: [Portal External Login]
+      summary: Send an external portal login code
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Login code send result. The response is intentionally generic for invited external users.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  detail:
+                    type: string
+                  login_type:
+                    type: string
+                    enum: [team]
+                  redirect_url:
+                    type: string
+              examples:
+                external:
+                  value:
+                    success: true
+                    detail: If the email is eligible, a login code has been sent.
+                team_member:
+                  value:
+                    success: true
+                    login_type: team
+                    redirect_url: /accounts/login/?next=/portal/08c1f4d2-57e3-43c4-bcce-61b781a47c18/
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/portal/{project_uuid}/external-login/verify/:
+    post:
+      tags: [Portal External Login]
+      summary: Verify an external portal login code
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, code]
+              properties:
+                email:
+                  type: string
+                  format: email
+                code:
+                  type: string
+      responses:
+        '200':
+          description: Login code verified and portal session established.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          description: Too many attempts.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/portal/{project_uuid}/portal-issues/views/:
+    get:
+      tags: [Portal Issue Views]
+      summary: List portal issue views
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      responses:
+        '200':
+          description: Portal issue views.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PortalIssueView'
+    post:
+      tags: [Portal Issue Views]
+      summary: Create a portal issue view
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                type:
+                  type: string
+                  default: table
+                data:
+                  type: object
+                  additionalProperties: true
+      responses:
+        '201':
+          description: View created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  view:
+                    $ref: '#/components/schemas/PortalIssueView'
+
+  /api/v1/portal/{project_uuid}/portal-issues/views/{view_id}/:
+    get:
+      tags: [Portal Issue Views]
+      summary: Get a portal issue view
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/view_id'
+      responses:
+        '200':
+          description: Portal issue view.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  view:
+                    $ref: '#/components/schemas/PortalIssueView'
+    put:
+      tags: [Portal Issue Views]
+      summary: Update a portal issue view
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/view_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [view_data]
+              properties:
+                view_data:
+                  type: object
+                  additionalProperties: true
+      responses:
+        '200':
+          description: View updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+    delete:
+      tags: [Portal Issue Views]
+      summary: Delete a portal issue view
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/view_id'
+      responses:
+        '200':
+          description: View deleted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /api/v1/portal/{project_uuid}/portal-issues/views/move/:
+    post:
+      tags: [Portal Issue Views]
+      summary: Move a portal issue view
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [source_view_id, target_view_id]
+              properties:
+                source_view_id:
+                  type: string
+                target_view_id:
+                  type: string
+      responses:
+        '200':
+          description: View moved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /api/v1/portal/{project_uuid}/portal-issues/views/duplicate/:
+    post:
+      tags: [Portal Issue Views]
+      summary: Duplicate a portal issue view
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [view_id]
+              properties:
+                view_id:
+                  type: string
+      responses:
+        '200':
+          description: View duplicated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  view:
+                    $ref: '#/components/schemas/PortalIssueView'
+
+  /api/v1/portal/{project_uuid}/portal-issues/types/:
+    get:
+      tags: [Portal Issue Types]
+      summary: List portal issue types
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      responses:
+        '200':
+          description: Portal issue types.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  types:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SelectOption'
+    post:
+      tags: [Portal Issue Types]
+      summary: Create a portal issue type
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [name, color, text_color]
+              properties:
+                name:
+                  type: string
+                color:
+                  type: string
+                text_color:
+                  type: string
+      responses:
+        '201':
+          description: Type created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    $ref: '#/components/schemas/SelectOption'
+    delete:
+      tags: [Portal Issue Types]
+      summary: Batch delete portal issue types
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type_ids]
+              properties:
+                type_ids:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Types deleted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /api/v1/portal/{project_uuid}/portal-issues/types/{type_id}/:
+    get:
+      tags: [Portal Issue Types]
+      summary: List issues for a portal issue type
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/type_id'
+      responses:
+        '200':
+          description: Issues using this type.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  issues:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PortalIssue'
+                  columns:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Column'
+    put:
+      tags: [Portal Issue Types]
+      summary: Update a portal issue type
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/type_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                color:
+                  type: string
+                text_color:
+                  type: string
+      responses:
+        '200':
+          description: Type updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+    delete:
+      tags: [Portal Issue Types]
+      summary: Delete a portal issue type
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/type_id'
+      responses:
+        '200':
+          description: Type deleted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /api/v1/portal/{project_uuid}/portal-issues/substates/:
+    get:
+      tags: [Portal Issue Substates]
+      summary: List portal issue substates
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - name: state_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Optional state option id used to filter cascaded substates.
+      responses:
+        '200':
+          description: Portal issue substates.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  substates:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SelectOption'
+                  cascade_column_key:
+                    type: string
+                  cascade_settings:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+    post:
+      tags: [Portal Issue Substates]
+      summary: Create a portal issue substate
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [name, color, text_color, parent_id]
+              properties:
+                name:
+                  type: string
+                color:
+                  type: string
+                text_color:
+                  type: string
+                description:
+                  type: string
+                parent_id:
+                  type: string
+                  description: Parent state option id.
+      responses:
+        '201':
+          description: Substate created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  substate:
+                    $ref: '#/components/schemas/SelectOption'
+    delete:
+      tags: [Portal Issue Substates]
+      summary: Batch delete portal issue substates
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [substate_ids]
+              properties:
+                substate_ids:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Substates deleted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /api/v1/portal/{project_uuid}/portal-issues/substates/{substate_id}/:
+    get:
+      tags: [Portal Issue Substates]
+      summary: List issues for a portal issue substate
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/substate_id'
+      responses:
+        '200':
+          description: Issues using this substate.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  issues:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PortalIssue'
+                  columns:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Column'
+    put:
+      tags: [Portal Issue Substates]
+      summary: Update a portal issue substate
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/substate_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                color:
+                  type: string
+                text_color:
+                  type: string
+                parent_id:
+                  type: string
+      responses:
+        '200':
+          description: Substate updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+    delete:
+      tags: [Portal Issue Substates]
+      summary: Delete a portal issue substate
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/substate_id'
+      responses:
+        '200':
+          description: Substate deleted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /api/v1/portal/{project_uuid}/portal-issues/trash/:
+    get:
+      tags: [Portal Issue Trash]
+      summary: List soft-deleted portal issues
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/start'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: Trash records.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  records:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PortalIssue'
+                  columns:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Column'
+                  ticket_pk_to_ticket_title:
+                    type: object
+                    additionalProperties:
+                      type: string
+    put:
+      tags: [Portal Issue Trash]
+      summary: Restore portal issues from trash
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [issue_ids]
+              properties:
+                issue_ids:
+                  type: array
+                  items:
+                    type: integer
+      responses:
+        '200':
+          description: Issues restored.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+    delete:
+      tags: [Portal Issue Trash]
+      summary: Permanently delete all soft-deleted portal issues
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      responses:
+        '200':
+          description: Trash emptied.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /api/v1/portal/{project_uuid}/chat/sessions/:
+    get:
+      tags: [Portal Chat]
+      summary: List portal chat sessions
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      responses:
+        '200':
+          description: Chat sessions.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PortalChatSession'
+    post:
+      tags: [Portal Chat]
+      summary: Create a portal chat session
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [session_name]
+              properties:
+                session_name:
+                  type: string
+      responses:
+        '201':
+          description: Chat session created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session:
+                    $ref: '#/components/schemas/PortalChatSession'
+
+  /api/v1/portal/{project_uuid}/chat/sessions/{session_uuid}/:
+    put:
+      tags: [Portal Chat]
+      summary: Rename a portal chat session
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/session_uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [session_name]
+              properties:
+                session_name:
+                  type: string
+      responses:
+        '200':
+          description: Chat session updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+    delete:
+      tags: [Portal Chat]
+      summary: Delete a portal chat session
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/session_uuid'
+      responses:
+        '200':
+          description: Chat session deleted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /api/v1/portal/{project_uuid}/chat/sessions/{session_uuid}/messages/:
+    get:
+      tags: [Portal Chat]
+      summary: List portal chat session messages
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/session_uuid'
+      responses:
+        '200':
+          description: Chat messages.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messages:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PortalChatMessage'
+                  running_task:
+                    type: boolean
+                  user_input:
+                    type: object
+                    additionalProperties: true
+
+  /api/v1/portal/{project_uuid}/chat/:
+    get:
+      tags: [Portal Chat]
+      summary: Get the latest portal chat AI reply after a non-streaming wait
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - name: session_uuid
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Latest AI reply.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ai_reply:
+                    type: string
+                  ai_reply_message_id:
+                    type: string
+                  session_uuid:
+                    type: string
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Portal Chat]
+      summary: Send a portal chat message
+      description: When `stream` is true, the response is a Server-Sent Events stream.
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query, session_uuid]
+              properties:
+                query:
+                  type: string
+                session_uuid:
+                  type: string
+                clear_context:
+                  type: boolean
+                  default: false
+                stream:
+                  type: boolean
+                  description: Overrides the project's streaming_response setting.
+                attachments:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/PortalChatAttachment'
+            example:
+              query: How can I reset my password?
+              session_uuid: 42d93f3d-5ffb-4418-a5fd-9fc24f01ef1b
+              stream: false
+              attachments: []
+      responses:
+        '200':
+          description: AI reply or Server-Sent Events stream.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+              example:
+                ai_reply: You can reset your password from the login page.
+                ai_reply_message_id: msg_456
+                user_message_id: msg_455
+                session_uuid: 42d93f3d-5ffb-4418-a5fd-9fc24f01ef1b
+            text/event-stream:
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '402':
+          description: AI credit not enough.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: There are unfinished tasks in the current session.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Portal chat rate limit or daily quota exceeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

@@ -33,8 +33,8 @@ components:
     query:
       name: query
       in: query
-      description: Search query string
-      required: true
+      description: Search query string. When empty or omitted, returns all results unfiltered (up to 100 items).
+      required: false
       schema:
         type: string
     query_str:
