@@ -3853,9 +3853,6 @@ paths:
                 view_id:
                   type: string
                   description: ID of the view to duplicate
-                folder_id:
-                  type: string
-                  description: Target folder ID (optional)
       responses:
         '200':
           description: OK

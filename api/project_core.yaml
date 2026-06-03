@@ -33,6 +33,13 @@ components:
     query:
       name: query
       in: query
+      description: Search query string.
+      required: true
+      schema:
+        type: string
+    query_optional:
+      name: query
+      in: query
       description: Search query string. When empty or omitted, returns all results unfiltered (up to 100 items).
       required: false
       schema:
@@ -309,7 +316,7 @@ paths:
         - AccountTokenAuth: []
       parameters:
         - $ref: '#/components/parameters/project_uuid'
-        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/query_optional'
       responses:
         '200':
           description: OK
