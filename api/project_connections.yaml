@@ -8,7 +8,7 @@ servers:
   - url: https://{server}
     variables:
       server:
-        default: cloud.seaticket.com
+        default: cloud.seaticket.ai
 
 x-readme:
   explorer-enabled: true
@@ -26,53 +26,56 @@ components:
     project_uuid:
       name: project_uuid
       in: path
-      description: The unique identifier of a project
+      description: The unique UUID v4 identifier of the project.
       required: true
       schema:
         type: string
     connection_id:
       name: connection_id
       in: path
-      description: The unique identifier of a project connection
+      description: The unique identifier of a project connection.
       required: true
       schema:
         type: integer
     view_id:
       name: view_id
       in: path
-      description: The unique identifier of a connection view
+      description: The unique identifier of a connection view.
       required: true
       schema:
         type: string
     record_id:
       name: record_id
       in: path
-      description: The unique identifier of a connection record
+      description: The unique identifier of a connection record.
       required: true
       schema:
         type: integer
     email_id:
       name: email_id
       in: path
-      description: The unique identifier of an email record
+      description: The unique identifier of an email record.
       required: true
       schema:
         type: integer
     view_id_query:
       name: view_id
       in: query
+      description: The unique identifier of the connection view to query records from.
       required: true
       schema:
         type: string
     connection_ids_query:
       name: connection_ids
       in: query
+      description: Comma-separated list of connection IDs to query status for.
       required: true
       schema:
         type: string
     page:
       name: page
       in: query
+      description: Page number for pagination (default 1).
       required: false
       schema:
         type: integer
@@ -80,6 +83,7 @@ components:
     per_page:
       name: per_page
       in: query
+      description: Number of items per page (default 100).
       required: false
       schema:
         type: integer
@@ -87,6 +91,7 @@ components:
     start:
       name: start
       in: query
+      description: The starting offset for paginated results (default 0).
       required: false
       schema:
         type: integer
@@ -94,6 +99,7 @@ components:
     limit:
       name: limit
       in: query
+      description: The maximum number of records to return (default 1000).
       required: false
       schema:
         type: integer
@@ -102,59 +108,59 @@ components:
   schemas:
     ConnectionRecord:
       type: object
-      description: Project connection record.
+      description: Full details of a project connection, including configuration, sync status, and AI processing state.
       properties:
         id:
           type: integer
-          description: Connection id.
+          description: Unique identifier of the connection.
         name:
           type: string
-          description: Connection name.
+          description: Display name of the connection.
         type:
           type: string
-          description: Connection type.
+          description: Type of the connection (e.g., github_issue, discourse_forum, email, site).
         config:
           type: object
-          description: Decrypted connection config.
+          description: Decrypted configuration object containing connection-specific settings.
         modifier:
           type: string
-          description: Last modifier username.
+          description: Username of the last person who modified the connection.
         created_at:
           type: string
           format: date-time
-          description: Creation time.
+          description: Timestamp when the connection was created.
         indexed_at:
           type: string
           format: date-time
-          description: Last indexed time.
+          description: Timestamp when the connection data was last indexed.
         last_sync_time:
           type: string
           format: date-time
-          description: Last sync time.
+          description: Timestamp of the last data synchronization.
         status:
           type: string
-          description: Sync status JSON string.
+          description: JSON-encoded status information, including the last sync result and record counts.
         is_active:
           type: boolean
-          description: Whether the connection is active.
+          description: Whether the connection is currently active and accepting syncs.
         ai_status:
           type: string
-          description: AI processing status JSON string.
+          description: JSON-encoded AI processing status (e.g., pending, processing, completed).
         last_ai_processing_time:
           type: string
           format: date-time
-          description: Last AI processing time.
+          description: Timestamp of the last AI processing attempt.
         ai_indexed_at:
           type: string
           format: date-time
-          description: AI index time.
+          description: Timestamp when AI summaries were last indexed.
         content_vector_indexed_at:
           type: string
           format: date-time
-          description: Content vector index time.
+          description: Timestamp when content vectors were last indexed for similarity search.
         content_vector_status:
           type: string
-          description: Content vector status JSON string.
+          description: JSON-encoded content vector indexing status.
       example:
         id: 7
         name: GitHub Issues
@@ -195,74 +201,101 @@ components:
             $ref: '#/components/schemas/ConnectionRecord'
     ConnectionDetailResponse:
       type: object
+      description: Response containing connection records with associated metadata.
       properties:
         records:
           type: array
+          description: Paginated list of row records from the connection.
           items:
             type: object
         columns:
           type: array
+          description: Column definitions describing the schema of the records.
           items:
             type: object
         name:
           type: string
+          description: Display name of the connection.
         type:
           type: string
+          description: Connection type (e.g., github_issue, discourse_forum, email).
         ticket_pk_to_ticket_title:
           type: object
+          description: Mapping of linked ticket PKs to their titles for quick reference.
         related_users:
           type: array
+          description: List of users related to the connection (only for general_task connections).
           items:
             type: object
     ConnectionRecordDetailResponse:
       type: object
+      description: Response containing full details of a single connection record.
       properties:
         record:
           type: object
+          description: The detailed record data.
         columns:
           type: array
+          description: Column definitions describing the schema of the record.
           items:
             type: object
         linked_ticket_title:
           type: string
+          description: Title of the linked ticket, if the record is associated with one.
         related_users:
           type: array
+          description: List of users related to the record (only for general_task connections).
           items:
             type: object
     SuccessResponse:
       type: object
+      description: Generic success confirmation response.
       properties:
         success:
           type: boolean
+          description: Whether the operation was successful.
       example:
         success: true
     ReplyEmailResponse:
       type: object
+      description: Response containing the saved reply email data.
       properties:
         sender_name:
           type: string
+          description: Display name of the email sender.
         sender_email:
           type: string
+          description: Email address of the sender.
         email_to:
           type: string
+          description: Recipient email address(es).
         cc:
           type: string
+          description: CC recipient email address(es).
         subject:
           type: string
+          description: Subject line of the reply email.
         content:
           type: string
+          description: Plain text body of the reply email.
         html_content:
           type: string
+          description: HTML body of the reply email (optional).
         reply_to_message_id:
           type: string
+          description: The Message-ID of the original email being replied to.
         origin_thread_id:
           type: string
+          description: The original thread ID from the email provider.
         message_id:
           type: string
+          description: The Message-ID generated for this reply.
         email_id:
           type: string
+          description: The external email provider's ID for this message.
         _pk:
           type: integer
+          description: The primary key of the saved reply email record.
       example:
         sender_name: SeaQA
         sender_email: support@example.com
@@ -278,17 +311,23 @@ components:
         _pk: 11
     ReplyDiscourseResponse:
       type: object
+      description: Response containing the saved Discourse reply data.
       properties:
         post_number:
           type: integer
+          description: The post number assigned by Discourse.
         content:
           type: string
+          description: The text content of the reply.
         author:
           type: string
+          description: The username that posted the reply.
         topic_pk:
           type: integer
+          description: The primary key of the topic being replied to.
         _pk:
           type: integer
+          description: The primary key of the saved reply record.
       example:
         post_number: 5
         content: Thanks, we will look into it.
@@ -297,9 +336,11 @@ components:
         _pk: 33
     GithubIssueResponse:
       type: object
+      description: Response containing the updated GitHub issue data.
       properties:
         issue:
           type: object
+          description: The updated issue object returned by the GitHub API.
       example:
         issue:
           id: 123
@@ -308,21 +349,27 @@ components:
           state: open
     TaskIdResponse:
       type: object
+      description: Response containing the identifier for a submitted background task.
       properties:
         task_id:
           type: string
+          description: The unique identifier for the submitted background task.
       example:
         task_id: job_123
     ConnectionStatusMap:
       type: object
+      description: A map of connection IDs to their sync status information.
       additionalProperties:
         type: object
+        description: Status object for a single connection.
         properties:
           status:
             type: string
+            description: JSON-encoded status string containing last_sync_status and other details.
           last_sync_time:
             type: string
             format: date-time
+            description: Timestamp of the last sync attempt.
       example:
         "7":
           status: '{"last_sync_status":"success"}'
@@ -334,6 +381,7 @@ paths:
       tags:
         - Connections
       summary: List project connections
+      description: Returns a paginated list of all non-deleted connections in the project.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -376,6 +424,7 @@ paths:
       tags:
         - Connections
       summary: Create a project connection
+      description: Creates a new connection (e.g., GitHub, Discourse, Email, Site) for the project. The request must be sent as `multipart/form-data`. Requires admin-level project permission.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -393,10 +442,13 @@ paths:
               properties:
                 name:
                   type: string
+                  description: A unique display name for the connection.
                 config:
                   type: string
+                  description: JSON-encoded configuration object containing connection-specific settings (e.g., repository URL, API keys).
                 type:
                   type: string
+                  description: The connection type (e.g., github_issue, discourse_forum, email, site).
               example:
                 name: GitHub Issues
                 type: github_issue
@@ -444,6 +496,7 @@ paths:
       tags:
         - Connections
       summary: Get a project connection
+      description: Retrieves the full details of a single connection by its ID.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -488,6 +541,7 @@ paths:
       tags:
         - Connections
       summary: Update a project connection
+      description: Updates the name, configuration, or active status of an existing connection. Requires admin-level project permission.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -502,10 +556,13 @@ paths:
               properties:
                 name:
                   type: string
+                  description: New display name for the connection.
                 config:
                   type: string
+                  description: JSON-encoded partial configuration to merge into the existing config.
                 is_active:
                   type: boolean
+                  description: Whether the connection should be activated or deactivated.
               example:
                 name: GitHub Issues
                 is_active: true
@@ -551,6 +608,7 @@ paths:
       tags:
         - Connections
       summary: Delete a project connection
+      description: Soft-deletes a connection by marking it as deleted. The connection will no longer appear in lists. Requires admin-level project permission.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -577,6 +635,7 @@ paths:
       tags:
         - Connections
       summary: Sync a connection
+      description: Triggers a manual sync for the specified connection. If the connection is currently syncing or the cooldown period has not elapsed, a 429 error is returned. The cooldown varies by connection type.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -605,6 +664,7 @@ paths:
       tags:
         - Connections
       summary: Get connection records
+      description: Returns paginated records from a specific connection view, including column definitions, linked ticket references, and related users.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -648,6 +708,7 @@ paths:
       tags:
         - Connections
       summary: Get connection query status
+      description: Returns the sync status and last sync time for one or more connections, keyed by connection ID. Accepts comma-separated connection IDs.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -678,6 +739,7 @@ paths:
       tags:
         - Connections
       summary: Get connection sync log
+      description: Retrieves the last sync log for the connection, with newlines converted to HTML line breaks.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -707,6 +769,7 @@ paths:
       tags:
         - Connections
       summary: Create a connection record
+      description: Creates a new record in a general_task connection. The record is created both remotely (via the external task adapter) and locally in SeaDB. Supports linking to an existing ticket.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -788,6 +851,7 @@ paths:
       tags:
         - Connections
       summary: Batch update connection records
+      description: Updates multiple records in a single request. Supports updating `outdated` for all types, and `unread` / `tags` for email connections. For general_task connections, changes are also synced to the remote task adapter.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -837,6 +901,7 @@ paths:
       tags:
         - Connections
       summary: Get a connection record
+      description: Retrieves the full detail of a single record, including its columns, linked ticket title, and related users. Supports multiple connection types (GitHub, Discourse, Email, Site, Seafile, Notion, General Task).
       security:
         - AccountTokenAuth: []
       parameters:
@@ -886,6 +951,7 @@ paths:
       tags:
         - Connections
       summary: Update a connection record
+      description: Updates specific fields on a single record. Supports `outdated` for all types, `unread` / `tags` for email connections, and `linked_ticket` for supported types. For general_task connections, changes are also synced to the remote task adapter.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -935,6 +1001,7 @@ paths:
       tags:
         - Connections
       summary: Reply by email
+      description: Sends a reply email for a specific email thread within the connection. Requires the `email_id` of the email being replied to and the reply `content`. The response includes the saved reply record.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -1009,6 +1076,7 @@ paths:
       tags:
         - Connections
       summary: Update a GitHub issue
+      description: Updates a GitHub issue's title, state, state_reason, labels, or issue_type. Changes are applied both on GitHub (via the GitHub API) and in the local SeaDB store.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -1020,14 +1088,27 @@ paths:
           application/json:
             schema:
               type: object
-              example:
-                _pk: 123
-                title: Fix login issue
-                state: closed
-                state_reason: completed
+              properties:
+                _pk:
+                  type: integer
+                  description: The primary key of the GitHub issue record in SeaDB.
+                title:
+                  type: string
+                  description: New title for the GitHub issue.
+                state:
+                  type: string
+                  description: New state (e.g., open, closed).
+                state_reason:
+                  type: string
+                  description: Reason for the state change (e.g., completed, not_planned, reopened).
                 labels:
-                  - bug
-                issue_type: Bug
+                  type: array
+                  description: New list of label names to apply.
+                  items:
+                    type: string
+                issue_type:
+                  type: string
+                  description: New issue type (e.g., Bug, Feature, Task).
       responses:
         '200':
           description: OK
@@ -1059,6 +1140,7 @@ paths:
       tags:
         - Connections
       summary: Reply to a Discourse topic
+      description: Posts a reply to a Discourse topic within the connection. Requires the topic's primary key (`_pk`) and the reply `content`. Both the Discourse API and local storage are updated.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -1110,6 +1192,7 @@ paths:
       tags:
         - Connection views
       summary: List connection views
+      description: Returns the list of all views and navigation structure for the connection, including folder organization.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -1137,6 +1220,7 @@ paths:
       tags:
         - Connection views
       summary: Create a connection view
+      description: Creates a new view (table or folder) for the connection. Requires a unique `name`. The returned view includes an auto-generated `_id`.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -1153,10 +1237,13 @@ paths:
               properties:
                 name:
                   type: string
+                  description: Display name for the new view.
                 type:
                   type: string
+                  description: View type (e.g., table, folder).
                 data:
                   type: object
+                  description: Optional configuration data for the view (e.g., filters, columns).
               example:
                 name: Default
                 type: table
@@ -1187,6 +1274,7 @@ paths:
       tags:
         - Connection views
       summary: Get a connection view
+      description: Retrieves the full configuration of a single view by its ID.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -1213,6 +1301,7 @@ paths:
       tags:
         - Connection views
       summary: Update a connection view
+      description: Updates the configuration of an existing view by replacing its `view_data`.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -1228,6 +1317,7 @@ paths:
               properties:
                 view_data:
                   type: object
+                  description: The full view configuration object to replace the existing one.
               example:
                 view_data:
                   _id: nc5t
@@ -1243,12 +1333,14 @@ paths:
                 properties:
                   success:
                     type: boolean
+                    description: Whether the update was successful.
               example:
                 success: true
     delete:
       tags:
         - Connection views
       summary: Delete a connection view
+      description: Permanently removes a view from the connection.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -1270,6 +1362,7 @@ paths:
       tags:
         - Connection views
       summary: Move connection views
+      description: Reorders or moves a view relative to another view or folder within the connection's navigation structure.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -1284,14 +1377,19 @@ paths:
               properties:
                 source_view_id:
                   type: string
+                  description: The ID of the view to move.
                 source_folder_id:
                   type: string
+                  description: The folder ID of the source (optional).
                 target_view_id:
                   type: string
+                  description: The ID of the target view to position relative to.
                 target_folder_id:
                   type: string
+                  description: The folder ID of the target (optional).
                 is_above_folder:
                   type: boolean
+                  description: If true, the source is placed above the target; otherwise below.
               example:
                 source_view_id: nc5t
                 target_view_id: abcd
@@ -1320,6 +1418,7 @@ paths:
       tags:
         - Connection views
       summary: Duplicate a connection view
+      description: Creates a copy of an existing view, including its configuration, and returns the newly created view with an auto-generated `_id`.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -1365,6 +1464,7 @@ paths:
       tags:
         - Connections
       summary: Zip email attachments
+      description: Submits a background task to zip all attachments for a specific email. Returns a `task_id` that can be used with the query-io-status endpoint to check progress.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -1380,6 +1480,7 @@ paths:
       tags:
         - Connections
       summary: Download email attachments
+      description: Downloads a pre-generated ZIP file containing all attachments for the specified email. Supports ETag-based caching as well as 304 Not Modified responses.
       security:
         - AccountTokenAuth: []
       parameters:

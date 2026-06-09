@@ -8,7 +8,7 @@ servers:
   - url: https://{server}
     variables:
       server:
-        default: cloud.seaticket.com
+        default: cloud.seaticket.ai
 
 x-readme:
   explorer-enabled: true
@@ -26,7 +26,7 @@ components:
     project_uuid:
       name: project_uuid
       in: path
-      description: The unique identifier of a project
+      description: The unique UUID v4 identifier of the project.
       required: true
       schema:
         type: string
@@ -52,37 +52,51 @@ components:
       properties:
         source_type:
           type: string
+          description: Type of the source (e.g., ticket, github_issue, discourse_forum, email).
         source_id:
           type: string
+          description: Unique identifier of the source item.
         source_title:
           type: string
+          description: Title or summary of the source item.
         actions:
           type: array
+          description: List of specific agent actions associated with this source.
           items:
             type: object
             properties:
               id:
                 type: integer
+                description: The unique identifier of the action.
               type:
                 type: string
+                description: The type of action (e.g., suggest_reply, suggest_modify_type, suggest_assign_labels, suggest_create_ticket, suggest_notify_assignee).
               tool_name:
                 type: string
+                description: The specific tool used by the agent for this action.
               result:
                 type: string
+                description: Result message of the action execution.
               status:
                 type: string
+                description: Status of the action (e.g., pending, executed, failed, cancelled).
               suggestion_content:
                 type: string
+                description: The agent's suggested content for this action.
               sources:
                 type: array
+                description: List of source evidence or contexts referenced by the action.
                 items:
                   type: object
               statistics:
                 type: string
+                description: Statistics about the action execution.
               created_at:
                 type: string
+                description: Timestamp when the action was created.
               executed_at:
                 type: string
+                description: Timestamp when the action was executed.
               phase:
                 type: string
                 description: Only included when include_details=true.
@@ -119,22 +133,30 @@ components:
       properties:
         id:
           type: integer
+          description: Unique identifier of the agent run.
         status:
           type: string
+          description: Status of the run (e.g., running, completed, failed).
         started_at:
           type: string
+          description: Timestamp when the run started.
         finished_at:
           type: string
+          description: Timestamp when the run finished.
         items_processed:
           type: integer
+          description: Number of items processed in this run.
         error_message:
           type: string
+          description: Error message if the run failed.
         items:
           type: array
+          description: List of grouped agent actions by source.
           items:
             $ref: '#/components/schemas/AgentAction'
         events:
           type: array
+          description: List of events that occurred during the run.
           items:
             type: object
       example:
@@ -150,37 +172,22 @@ components:
             source_title: Login issue
             actions: []
         events: []
-    AgentRunListResponse:
-      type: object
-      properties:
-        runs:
-          type: array
-          items:
-            $ref: '#/components/schemas/AgentRun'
-        has_more:
-          type: boolean
-      example:
-        runs:
-          - id: 9
-            status: running
-            started_at: '2026-05-27T09:00:00Z'
-            finished_at: ''
-            items_processed: 3
-            error_message: ''
-            items: []
-            events: []
-        has_more: false
     AgentActionConfirmResponse:
       type: object
+      description: Response returned when a pending agent action is successfully confirmed and executed.
       properties:
         success:
           type: boolean
+          description: Indicates whether the action was successfully executed.
         action_id:
           type: integer
+          description: The ID of the confirmed action.
         status:
           type: string
+          description: The updated status of the action after execution (e.g., executed, failed).
         result:
           type: string
+          description: Detailed result message of the execution operation.
       example:
         success: true
         action_id: 101
@@ -188,39 +195,50 @@ components:
         result: Reply posted to GitHub issue #42.
     AgentActionUpdateResponse:
       type: object
+      description: Response returned when a pending agent action's suggestion is updated.
       properties:
         success:
           type: boolean
+          description: Indicates whether the update was successful.
         action_id:
           type: integer
+          description: The ID of the updated action.
         suggestion_content:
           type: string
+          description: The updated suggestion content.
       example:
         success: true
         action_id: 101
         suggestion_content: Updated reply content
     AgentActionCancelResponse:
       type: object
+      description: Response returned when a pending agent action is cancelled.
       properties:
         success:
           type: boolean
+          description: Indicates whether the cancellation was successful.
         action_id:
           type: integer
+          description: The ID of the cancelled action.
         status:
           type: string
+          description: The updated status of the action (cancelled).
       example:
         success: true
         action_id: 101
         status: cancelled
     GithubIssueTypesResponse:
       type: object
+      description: Response containing available GitHub issue types.
       properties:
         issue_types:
           type: array
+          description: List of mapped GitHub issue types.
           items:
             type: object
         warning:
           type: string
+          description: Warning message, such as 'no_github_connection' if there are no active GitHub connections.
       example:
         issue_types:
           - id: 1
@@ -230,19 +248,25 @@ components:
         warning: ''
     GithubIssueTypesRefreshResponse:
       type: object
+      description: Response containing the results of refreshing GitHub issue types from the repository.
       properties:
         added:
           type: integer
+          description: Number of new issue types added.
         added_names:
           type: array
+          description: Names of the newly added issue types.
           items:
             type: string
         updated:
           type: integer
+          description: Number of existing issue types updated.
         deleted:
           type: integer
+          description: Number of issue types removed.
         issue_types:
           type: array
+          description: Complete list of available issue types after the refresh.
           items:
             type: object
       example:
@@ -263,6 +287,7 @@ paths:
       tags:
         - Agent
       summary: List agent runs
+      description: Returns a paginated list of agent runs for the project, including their basic info and grouped actions. Note that detailed fields (like phase, prompt, step) for actions are omitted by default to improve performance.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -287,18 +312,25 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AgentRunListResponse'
-              example:
-                runs:
-                  - id: 9
-                    status: running
-                    started_at: '2026-05-27T09:00:00Z'
-                    finished_at: ''
-                    items_processed: 3
-                    error_message: ''
-                    items: []
-                    events: []
-                has_more: false
+                type: object
+                properties:
+                  runs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AgentRun'
+                  has_more:
+                    type: boolean
+                example:
+                  runs:
+                    - id: 9
+                      status: running
+                      started_at: '2026-05-27T09:00:00Z'
+                      finished_at: ''
+                      items_processed: 3
+                      error_message: ''
+                      items: []
+                      events: []
+                  has_more: false
         '403':
           description: Permission denied
         '404':
@@ -311,6 +343,7 @@ paths:
       tags:
         - Agent
       summary: Get agent run detail
+      description: Retrieves detailed information about a specific agent run, including all actions taken during the run grouped by source items. Set `include_details=true` to retrieve detailed execution steps and prompts.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -357,6 +390,10 @@ paths:
       tags:
         - Agent
       summary: Confirm a pending agent action
+      description: |
+        Approves and executes a pending action proposed by the agent. 
+        When confirmed, the system dispatches the execution logic (e.g., posting a reply to GitHub) based on the action's `source_type` and `tool_name`, and then updates the action status to `executed`. 
+        If the action requires a mapping that is missing (e.g., suggesting a GitHub issue type without mapping), it returns a 400 error with `error_code: mapping_required` and includes available mapping options.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -399,6 +436,7 @@ paths:
       tags:
         - Agent
       summary: Update a pending agent action
+      description: Allows a user to edit the `suggestion_content` of a pending agent action before confirming it. Fails if the action does not belong to the run or is no longer pending.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -444,6 +482,7 @@ paths:
       tags:
         - Agent
       summary: Cancel a pending agent action
+      description: Rejects and cancels a pending agent action. The action's status is updated to `cancelled` and it will not be executed. Fails if the action is no longer pending.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -475,6 +514,7 @@ paths:
       tags:
         - Agent
       summary: List GitHub issue type options
+      description: Retrieves the cached list of GitHub issue types available across active GitHub connections for the project. If there are no active GitHub connections, returns an empty list with a warning.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -503,6 +543,7 @@ paths:
       tags:
         - Agent
       summary: Refresh GitHub issue types
+      description: Forces a sync with the GitHub API to fetch the latest issue types for the project's first active GitHub repository. It updates the cached options in the database, resolving renames and deletions.
       security:
         - AccountTokenAuth: []
       parameters:

@@ -36,10 +36,10 @@ jobs:
           rdme: openapi upload ./api/project_management.yaml --key=${{ secrets.README_API_KEY }}
 
       # ticket operations
-      - name: Ticket operations 🚀
+      - name: Ticket & Konwledge base operations 🚀
         uses: readmeio/rdme@v10
         with:
-          rdme: openapi upload ./api/ticket_operations.yaml --key=${{ secrets.README_API_KEY }}
+          rdme: openapi upload ./api/ticket_and_konwledge_base_operations.yaml --key=${{ secrets.README_API_KEY }}
 
       # project connections
       - name: Project connections 🚀
@@ -51,13 +51,7 @@ jobs:
       - name: Project tags & files 🚀
         uses: readmeio/rdme@v10
         with:
-          rdme: openapi upload ./api/project_tags_files.yaml --key=${{ secrets.README_API_KEY }}
-
-      # project webhooks
-      - name: Project webhooks 🚀
-        uses: readmeio/rdme@v10
-        with:
-          rdme: openapi upload ./api/project_webhooks.yaml --key=${{ secrets.README_API_KEY }}
+          rdme: openapi upload ./api/project_tags_and_files.yaml --key=${{ secrets.README_API_KEY }}
 
       # project api tokens
       - name: Project API tokens 🚀

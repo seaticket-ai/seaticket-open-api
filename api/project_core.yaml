@@ -8,7 +8,7 @@ servers:
   - url: https://{server}
     variables:
       server:
-        default: cloud.seaticket.com
+        default: cloud.seaticket.ai
 
 x-readme:
   explorer-enabled: true
@@ -26,7 +26,7 @@ components:
     project_uuid:
       name: project_uuid
       in: path
-      description: The unique identifier of a project
+      description: The unique UUID v4 identifier of the project.
       required: true
       schema:
         type: string
@@ -189,6 +189,7 @@ paths:
       tags:
         - Project
       summary: List related users
+      description: Returns the list of users related to the project owner or group.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -223,6 +224,7 @@ paths:
       tags:
         - Project
       summary: Search project items
+      description: Searches projects by query string and type. Returns matching project items.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -263,6 +265,7 @@ paths:
       tags:
         - Project
       summary: Search tickets
+      description: Searches tickets within a project by query string. Returns matching tickets, columns, and linked record titles.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -312,6 +315,7 @@ paths:
       tags:
         - Project
       summary: Search tickets and documents
+      description: Searches tickets and documents (knowledge base, sites, seafile) within a project. When query is empty, returns all results unfiltered.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -359,6 +363,7 @@ paths:
       tags:
         - Project
       summary: List GitHub repositories
+      description: Returns the list of GitHub repositories bound to the project via GitHub App installations.
       security:
         - AccountTokenAuth: []
       parameters:

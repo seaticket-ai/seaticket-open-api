@@ -9,7 +9,7 @@ servers:
   - url: https://{server}
     variables:
       server:
-        default: cloud.seaticket.com
+        default: cloud.seaticket.ai
 
 x-readme:
   explorer-enabled: true
@@ -30,7 +30,7 @@ components:
     project_uuid:
       name: project_uuid
       in: path
-      description: The unique identifier of a project.
+      description: The unique UUID v4 identifier of the project.
       required: true
       schema:
         type: string
@@ -110,6 +110,7 @@ components:
       properties:
         error_msg:
           type: string
+          description: Human-readable error message describing the problem.
       example:
         error_msg: Permission denied.
     Success:
@@ -117,6 +118,7 @@ components:
       properties:
         success:
           type: boolean
+          description: Indicates whether the operation succeeded.
       example:
         success: true
     Column:
@@ -133,42 +135,56 @@ components:
       properties:
         _pk:
           type: integer
+          description: Primary key of the portal issue.
         title:
           type: string
+          description: Title of the portal issue.
         content:
           type: string
+          description: Main content body of the portal issue.
         state:
           type: string
           enum: [open, closed]
+          description: Current state of the portal issue.
         substate:
           type: string
           nullable: true
+          description: Current substate of the portal issue.
         type:
           type: string
           nullable: true
+          description: Type or category of the portal issue.
         priority:
           type: integer
           minimum: 0
           maximum: 5
+          description: Priority level from 0 (lowest) to 5 (highest).
         tags:
           type: array
           items:
             type: integer
+          description: Array of tag IDs associated with the portal issue.
         creator:
           type: string
+          description: Username of the issue creator.
         comment_count:
           type: integer
+          description: Number of comments on the portal issue.
         linked_ticket:
           type: integer
           nullable: true
+          description: Primary key of the linked ticket, if any.
         created_time:
           type: string
           format: date-time
+          description: Timestamp when the portal issue was created.
         modified_time:
           type: string
           format: date-time
+          description: Timestamp when the portal issue was last modified.
         deleted:
           type: boolean
+          description: Whether the portal issue has been soft-deleted.
       example:
         _pk: 12
         title: Cannot log in
@@ -190,22 +206,30 @@ components:
       properties:
         _pk:
           type: integer
+          description: Primary key of the comment.
         issue_id:
           type: integer
+          description: Primary key of the parent portal issue.
         creator:
           type: string
+          description: Username of the comment author.
         content:
           type: string
+          description: Comment text content.
         via_agent:
           type: boolean
+          description: Whether the comment was created by a support agent.
         created_time:
           type: string
           format: date-time
+          description: Timestamp when the comment was created.
         modified_time:
           type: string
           format: date-time
+          description: Timestamp when the comment was last modified.
         deleted:
           type: boolean
+          description: Whether the comment has been soft-deleted.
       example:
         _pk: 8
         issue_id: 12
@@ -221,6 +245,7 @@ components:
       properties:
         text:
           type: string
+          description: Plain text content of the issue, comment, or chat message.
         images:
           type: array
           items:
@@ -241,14 +266,19 @@ components:
       properties:
         id:
           type: string
+          description: Unique identifier for the option.
         name:
           type: string
+          description: Display name of the option.
         color:
           type: string
+          description: Background color hex code for the option.
         text_color:
           type: string
+          description: Text color hex code for the option.
         description:
           type: string
+          description: Optional description text for the option.
       example:
         id: opt123
         name: Bug
@@ -261,13 +291,17 @@ components:
       properties:
         _id:
           type: string
+          description: Unique identifier for the view.
         name:
           type: string
+          description: Display name of the view.
         type:
           type: string
+          description: View type (e.g. table).
         data:
           type: object
           additionalProperties: true
+          description: View configuration data including filters and sorts.
       example:
         _id: view_1
         name: Open issues
@@ -280,14 +314,19 @@ components:
       properties:
         allow_anonymous:
           type: boolean
+          description: Whether anonymous users can access the portal.
         enable_password_protection:
           type: boolean
+          description: Whether the portal requires a password to access.
         show_knowledge_base:
           type: boolean
+          description: Whether the knowledge base tab is visible in the portal.
         chat_allowed_sources:
           $ref: '#/components/schemas/PortalChatAllowedSources'
+          description: Allowed data sources for the portal AI chat.
         daily_chat_credit_limit:
           type: integer
+          description: Maximum AI chat credits a user can consume per day.
       example:
         allow_anonymous: true
         enable_password_protection: false
@@ -305,10 +344,12 @@ components:
             oneOf:
               - type: integer
               - type: string
+          description: IDs of SeaTable connection records to use as chat sources.
         extra_sources:
           type: array
           items:
             type: string
+          description: Additional source types beyond connections, such as portal_issue or knowledge_base.
       example:
         connection_ids: [5]
         extra_sources: [portal_issue, knowledge_base]
@@ -318,18 +359,24 @@ components:
       properties:
         session_uuid:
           type: string
+          description: Unique UUID of the chat session.
         session_name:
           type: string
+          description: Human-readable name of the chat session.
         project_uuid:
           type: string
+          description: UUID of the project the session belongs to.
         username:
           type: string
+          description: User who owns the chat session.
         created_at:
           type: string
           format: date-time
+          description: Timestamp when the session was created.
         updated_at:
           type: string
           format: date-time
+          description: Timestamp when the session was last updated.
       example:
         session_uuid: 42d93f3d-5ffb-4418-a5fd-9fc24f01ef1b
         session_name: Login help
@@ -341,13 +388,17 @@ components:
       properties:
         id:
           type: string
+          description: Unique identifier for the message.
         role:
           type: string
+          description: Role of the message sender (user or assistant).
         content:
           type: string
+          description: Text content of the message.
         created_at:
           type: string
           format: date-time
+          description: Timestamp when the message was created.
       example:
         id: msg_123
         role: assistant
@@ -358,12 +409,15 @@ components:
         type:
           type: string
           example: image
+          description: MIME type category of the attachment (e.g. image, file).
         name:
           type: string
           example: screenshot.png
+          description: Original filename of the attachment.
         url:
           type: string
           example: /upload-file/portal/08c1f4d2-57e3-43c4-bcce-61b781a47c18/screenshot.png
+          description: URL to access the attachment content.
 
   responses:
     BadRequest:
@@ -398,6 +452,7 @@ paths:
     get:
       tags: [Portal Settings]
       summary: Get portal settings
+      description: Retrieve the current portal settings for the given project.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
       responses:
@@ -412,6 +467,7 @@ paths:
     post:
       tags: [Portal Settings]
       summary: Update portal settings
+      description: Update the portal settings, including access control, branding, and AI chat configuration.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
       requestBody:
@@ -468,6 +524,7 @@ paths:
     get:
       tags: [Portal Files]
       summary: Get portal logo
+      description: Retrieve the portal logo image file. Authentication is not required.
       security: []
       parameters:
         - $ref: '#/components/parameters/project_uuid'
@@ -492,6 +549,7 @@ paths:
     post:
       tags: [Portal Files]
       summary: Upload portal logo
+      description: Upload a new logo image for the portal. Only project admins can perform this action.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
       requestBody:
@@ -505,6 +563,7 @@ paths:
                 file:
                   type: string
                   format: binary
+                  description: The logo image file to upload.
       responses:
         '201':
           description: Logo uploaded.
@@ -559,6 +618,7 @@ paths:
     get:
       tags: [Portal Files]
       summary: Get a temporary portal attachment
+      description: Retrieve a previously uploaded temporary file by its file path. Files are served from temporary storage.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - name: file_path
@@ -566,6 +626,7 @@ paths:
           required: true
           schema:
             type: string
+          description: Path to the temporary file as returned by the upload-file endpoint.
       responses:
         '200':
           description: Temporary attachment file.
@@ -592,6 +653,7 @@ paths:
           schema:
             type: string
           example: attachments/portal-issue/12/screenshot.png
+          description: Path to the persisted file under a portal-visible attachment prefix.
       responses:
         '200':
           description: Persisted attachment file.
@@ -611,6 +673,7 @@ paths:
     get:
       tags: [Portal Issues]
       summary: List portal issues in a portal issue view
+      description: List portal issues filtered by a specific view, with pagination and linked ticket titles.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - name: view_id
@@ -618,6 +681,7 @@ paths:
           required: true
           schema:
             type: string
+          description: The ID of the portal issue view to use for filtering and sorting.
         - $ref: '#/components/parameters/start'
         - $ref: '#/components/parameters/limit'
       responses:
@@ -645,6 +709,7 @@ paths:
     post:
       tags: [Portal Issues]
       summary: Create a portal issue
+      description: Create a new portal issue with title, content, and optional type, priority, and tags.
       requestBody:
         required: true
         content:
@@ -696,6 +761,7 @@ paths:
     put:
       tags: [Portal Issues]
       summary: Batch update portal issues
+      description: Update one or more portal issues in a single request. Each entry specifies the row ID and the fields to update.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
       requestBody:
@@ -714,9 +780,11 @@ paths:
                     properties:
                       row_id:
                         type: integer
+                        description: Primary key of the portal issue to update.
                       row:
                         type: object
                         additionalProperties: true
+                        description: Fields to update on the portal issue.
             example:
               issues_data:
                 - row_id: 12
@@ -735,6 +803,7 @@ paths:
     delete:
       tags: [Portal Issues]
       summary: Soft delete portal issues
+      description: Soft-delete one or more portal issues by their primary keys. Deleted issues can be restored from the trash.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
       requestBody:
@@ -749,6 +818,7 @@ paths:
                   type: array
                   items:
                     type: integer
+                    description: Primary keys of the portal issues to soft-delete.
             example:
               issue_ids: [12, 13]
       responses:
@@ -772,6 +842,7 @@ paths:
     post:
       tags: [Portal Issues]
       summary: List issues created by the current portal user
+      description: List portal issues created by the currently authenticated external user, with optional state filtering and config.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
       requestBody:
@@ -785,12 +856,15 @@ paths:
                   type: string
                   enum: [open, closed]
                   default: open
+                  description: Filter by issue state.
                 start:
                   type: integer
                   default: 0
+                  description: Zero-based offset.
                 limit:
                   type: integer
                   default: 1000
+                  description: Maximum number of records to return.
                 config:
                   type: string
                   description: JSON-encoded view filter config.
@@ -817,6 +891,7 @@ paths:
     get:
       tags: [Portal Issues]
       summary: Get a portal issue
+      description: Retrieve a single portal issue by its primary key, including columns and the linked ticket title.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - $ref: '#/components/parameters/issue_id'
@@ -841,6 +916,7 @@ paths:
     put:
       tags: [Portal Issues]
       summary: Update a portal issue
+      description: Update the fields of an existing portal issue, including title, content, state, type, substate, priority, tags, and linked ticket.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - $ref: '#/components/parameters/issue_id'
@@ -853,28 +929,34 @@ paths:
               properties:
                 title:
                   type: string
+                  description: New title for the portal issue.
                 content:
                   type: string
                   description: JSON-encoded ContentPayload.
                 state:
                   type: string
                   enum: [open, closed]
+                  description: New state for the portal issue.
                 type:
                   type: string
                   nullable: true
+                  description: New type or category for the portal issue.
                 substate:
                   type: string
                   nullable: true
+                  description: New substate for the portal issue.
                 priority:
                   type: integer
                   minimum: 0
                   maximum: 5
+                  description: New priority level from 0 (lowest) to 5 (highest).
                 tags:
                   type: string
                   description: JSON-encoded array of tag ids.
                 linked_ticket:
                   type: integer
                   nullable: true
+                  description: Primary key of the ticket to link, or null to unlink.
       responses:
         '200':
           description: Updated row data.
@@ -893,6 +975,7 @@ paths:
     delete:
       tags: [Portal Issues]
       summary: Soft delete a portal issue
+      description: Soft-delete a single portal issue by its primary key. It can later be restored from the trash.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - $ref: '#/components/parameters/issue_id'
@@ -910,6 +993,7 @@ paths:
     get:
       tags: [Portal Comments]
       summary: List portal issue comments
+      description: List all comments on a portal issue with pagination support.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - $ref: '#/components/parameters/issue_id'
@@ -918,13 +1002,15 @@ paths:
           required: false
           schema:
             type: integer
-            default: 2
+            default: 1
+          description: Page number for pagination (1-indexed).
         - name: per_page
           in: query
           required: false
           schema:
             type: integer
             default: 25
+          description: Number of comments per page.
       responses:
         '200':
           description: Portal issue comments.
@@ -942,6 +1028,7 @@ paths:
     post:
       tags: [Portal Comments]
       summary: Create a portal issue comment
+      description: Add a new comment to a portal issue with text content and optional image attachments.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - $ref: '#/components/parameters/issue_id'
@@ -979,6 +1066,7 @@ paths:
     put:
       tags: [Portal Comments]
       summary: Update a portal issue comment
+      description: Update the content of an existing portal issue comment.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - $ref: '#/components/parameters/issue_id'
@@ -1015,6 +1103,7 @@ paths:
     delete:
       tags: [Portal Comments]
       summary: Delete a portal issue comment
+      description: Soft-delete a portal issue comment by its ID.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - $ref: '#/components/parameters/issue_id'
@@ -1031,6 +1120,7 @@ paths:
     get:
       tags: [Portal Metadata]
       summary: List portal tags
+      description: Retrieve the list of portal tags with their column metadata.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - $ref: '#/components/parameters/start'
@@ -1057,6 +1147,7 @@ paths:
     post:
       tags: [Portal Metadata]
       summary: Get basic user information for portal display
+      description: Resolve basic user information (name, avatar) for a list of user IDs.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
       requestBody:
@@ -1092,6 +1183,7 @@ paths:
     get:
       tags: [Portal Metadata]
       summary: Get portal issue select field metadata
+      description: Get the available states, substates, and types for portal issues.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
       responses:
@@ -1116,6 +1208,7 @@ paths:
     get:
       tags: [Portal Knowledge Base]
       summary: List portal-visible knowledge base views
+      description: List all knowledge base views that are visible in the portal.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
       responses:
@@ -1135,6 +1228,7 @@ paths:
     get:
       tags: [Portal Knowledge Base]
       summary: List portal-visible knowledge base records
+      description: List knowledge base records for a given view that are visible in the portal.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - name: view_id
@@ -1142,6 +1236,7 @@ paths:
           required: true
           schema:
             type: string
+          description: The ID of the knowledge base view to list records from.
         - $ref: '#/components/parameters/start'
         - $ref: '#/components/parameters/limit'
       responses:
@@ -1170,6 +1265,7 @@ paths:
     get:
       tags: [Portal Knowledge Base]
       summary: Get a portal-visible knowledge base record
+      description: Get a single knowledge base record by its primary key that is visible in the portal.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - name: knowledge_id
@@ -1177,6 +1273,7 @@ paths:
           required: true
           schema:
             type: integer
+          description: Primary key of the knowledge base record.
       responses:
         '200':
           description: Knowledge base record.
@@ -1197,6 +1294,7 @@ paths:
     get:
       tags: [Portal External Users]
       summary: List portal external invitations
+      description: List all external invitation tokens created for the portal.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
       responses:
@@ -1214,25 +1312,33 @@ paths:
                       properties:
                         token:
                           type: string
+                          description: Unique invitation token.
                         link:
                           type: string
+                          description: Full invitation URL for the external user.
                         expire_time:
                           type: string
                           format: date-time
+                          description: Timestamp when the invitation expires.
                         email:
                           type: string
+                          description: Email address of the invited user.
                         inviter:
                           type: string
+                          description: Username of the person who created the invitation.
                         accepted_at:
                           type: string
                           format: date-time
                           nullable: true
+                          description: Timestamp when the invitation was accepted, or null if still pending.
                         created_at:
                           type: string
                           format: date-time
+                          description: Timestamp when the invitation was created.
     post:
       tags: [Portal External Users]
       summary: Invite an external portal user
+      description: Send an invitation email to an external user to grant them access to the portal.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
       requestBody:
@@ -1246,6 +1352,7 @@ paths:
                 email:
                   type: string
                   format: email
+                  description: Email address of the user to invite.
             example:
               email: customer@example.com
       responses:
@@ -1268,6 +1375,7 @@ paths:
     delete:
       tags: [Portal External Users]
       summary: Delete a portal external invitation
+      description: Delete a pending external invitation by its token.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - $ref: '#/components/parameters/token'
@@ -1285,6 +1393,7 @@ paths:
     get:
       tags: [Portal External Users]
       summary: List portal external users
+      description: List all external users who have accepted portal invitations and have portal access.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
       responses:
@@ -1302,11 +1411,14 @@ paths:
                       properties:
                         email:
                           type: string
+                          description: Email address of the external user.
                         activated:
                           type: boolean
+                          description: Whether the external user has activated their portal access.
     delete:
       tags: [Portal External Users]
       summary: Delete a portal external user
+      description: Remove an external user's access to the portal by their email address.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
       requestBody:
@@ -1320,6 +1432,7 @@ paths:
                 email:
                   type: string
                   format: email
+                  description: Email address of the external user to remove.
       responses:
         '200':
           description: External user deleted.
@@ -1332,6 +1445,7 @@ paths:
     post:
       tags: [Portal External Login]
       summary: Send an external portal login code
+      description: Send a one-time login code to the given email address for portal access. No authentication required.
       security: []
       parameters:
         - $ref: '#/components/parameters/project_uuid'
@@ -1346,6 +1460,7 @@ paths:
                 email:
                   type: string
                   format: email
+                  description: Email address to send the login code to.
       responses:
         '200':
           description: Login code send result. The response is intentionally generic for invited external users.
@@ -1380,6 +1495,7 @@ paths:
     post:
       tags: [Portal External Login]
       summary: Verify an external portal login code
+      description: Verify a one-time login code and establish a portal session. No authentication required.
       security: []
       parameters:
         - $ref: '#/components/parameters/project_uuid'
@@ -1394,8 +1510,10 @@ paths:
                 email:
                   type: string
                   format: email
+                  description: Email address that was used to request the login code.
                 code:
                   type: string
+                  description: The one-time login code received via email.
       responses:
         '200':
           description: Login code verified and portal session established.
@@ -1416,6 +1534,7 @@ paths:
     get:
       tags: [Portal Issue Views]
       summary: List portal issue views
+      description: List all custom views defined for the portal issues table.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
       responses:
@@ -1430,6 +1549,7 @@ paths:
     post:
       tags: [Portal Issue Views]
       summary: Create a portal issue view
+      description: Create a new custom view for the portal issues table with an optional type and configuration data.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
       requestBody:
@@ -1463,6 +1583,7 @@ paths:
     get:
       tags: [Portal Issue Views]
       summary: Get a portal issue view
+      description: Get a specific portal issue view by its ID.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - $ref: '#/components/parameters/view_id'
@@ -1479,6 +1600,7 @@ paths:
     put:
       tags: [Portal Issue Views]
       summary: Update a portal issue view
+      description: Update the configuration of a portal issue view.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - $ref: '#/components/parameters/view_id'
@@ -1493,6 +1615,7 @@ paths:
                 view_data:
                   type: object
                   additionalProperties: true
+                  description: View configuration data to update.
       responses:
         '200':
           description: View updated.
@@ -1503,6 +1626,7 @@ paths:
     delete:
       tags: [Portal Issue Views]
       summary: Delete a portal issue view
+      description: Delete a portal issue view by its ID.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - $ref: '#/components/parameters/view_id'
@@ -1518,6 +1642,7 @@ paths:
     post:
       tags: [Portal Issue Views]
       summary: Move a portal issue view
+      description: Reorder a portal issue view by moving it before or after the target view.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
       requestBody:
@@ -1544,6 +1669,7 @@ paths:
     post:
       tags: [Portal Issue Views]
       summary: Duplicate a portal issue view
+      description: Create a copy of an existing portal issue view.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
       requestBody:
@@ -1571,6 +1697,7 @@ paths:
     get:
       tags: [Portal Issue Types]
       summary: List portal issue types
+      description: List all issue type options available in the portal.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
       responses:
@@ -1588,6 +1715,7 @@ paths:
     post:
       tags: [Portal Issue Types]
       summary: Create a portal issue type
+      description: Create a new issue type option with a name and color scheme.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
       requestBody:
@@ -1617,6 +1745,7 @@ paths:
     delete:
       tags: [Portal Issue Types]
       summary: Batch delete portal issue types
+      description: Batch delete one or more issue type options by their IDs.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
       requestBody:
@@ -1631,6 +1760,7 @@ paths:
                   type: array
                   items:
                     type: string
+                  description: Array of type option IDs to delete.
       responses:
         '200':
           description: Types deleted.
@@ -1643,6 +1773,7 @@ paths:
     get:
       tags: [Portal Issue Types]
       summary: List issues for a portal issue type
+      description: List all portal issues that use a specific type option.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - $ref: '#/components/parameters/type_id'
@@ -1665,6 +1796,7 @@ paths:
     put:
       tags: [Portal Issue Types]
       summary: Update a portal issue type
+      description: Update the name, color, or text color of an issue type option.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - $ref: '#/components/parameters/type_id'
@@ -1691,6 +1823,7 @@ paths:
     delete:
       tags: [Portal Issue Types]
       summary: Delete a portal issue type
+      description: Delete a single issue type option by its ID.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - $ref: '#/components/parameters/type_id'
@@ -1706,6 +1839,7 @@ paths:
     get:
       tags: [Portal Issue Substates]
       summary: List portal issue substates
+      description: List all portal issue substate options, optionally filtered by a parent state.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - name: state_id
@@ -1737,6 +1871,7 @@ paths:
     post:
       tags: [Portal Issue Substates]
       summary: Create a portal issue substate
+      description: Create a new portal issue substate option under a parent state.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
       requestBody:
@@ -1749,12 +1884,16 @@ paths:
               properties:
                 name:
                   type: string
+                  description: Display name of the substate.
                 color:
                   type: string
+                  description: Background color hex code for the substate.
                 text_color:
                   type: string
+                  description: Text color hex code for the substate.
                 description:
                   type: string
+                  description: Optional description of the substate.
                 parent_id:
                   type: string
                   description: Parent state option id.
@@ -1771,6 +1910,7 @@ paths:
     delete:
       tags: [Portal Issue Substates]
       summary: Batch delete portal issue substates
+      description: Batch delete one or more portal issue substate options by their IDs.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
       requestBody:
@@ -1797,6 +1937,7 @@ paths:
     get:
       tags: [Portal Issue Substates]
       summary: List issues for a portal issue substate
+      description: List all portal issues that use a specific substate option.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - $ref: '#/components/parameters/substate_id'
@@ -1819,6 +1960,7 @@ paths:
     put:
       tags: [Portal Issue Substates]
       summary: Update a portal issue substate
+      description: Update the name, color, text color, description, or parent of a substate option.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - $ref: '#/components/parameters/substate_id'
@@ -1849,6 +1991,7 @@ paths:
     delete:
       tags: [Portal Issue Substates]
       summary: Delete a portal issue substate
+      description: Delete a single portal issue substate option by its ID.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - $ref: '#/components/parameters/substate_id'
@@ -1864,6 +2007,7 @@ paths:
     get:
       tags: [Portal Issue Trash]
       summary: List soft-deleted portal issues
+      description: List portal issues that have been soft-deleted and are in the trash.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - $ref: '#/components/parameters/start'
@@ -1891,6 +2035,7 @@ paths:
     put:
       tags: [Portal Issue Trash]
       summary: Restore portal issues from trash
+      description: Restore soft-deleted portal issues back to active status by their IDs.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
       requestBody:
@@ -1915,6 +2060,7 @@ paths:
     delete:
       tags: [Portal Issue Trash]
       summary: Permanently delete all soft-deleted portal issues
+      description: Permanently delete all portal issues that are currently in the trash.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
       responses:
@@ -1929,6 +2075,7 @@ paths:
     get:
       tags: [Portal Chat]
       summary: List portal chat sessions
+      description: List all AI chat sessions for the current user in this project.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
       responses:
@@ -1946,6 +2093,7 @@ paths:
     post:
       tags: [Portal Chat]
       summary: Create a portal chat session
+      description: Create a new AI chat session with a given session name.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
       requestBody:
@@ -1973,6 +2121,7 @@ paths:
     put:
       tags: [Portal Chat]
       summary: Rename a portal chat session
+      description: Rename an existing AI chat session.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - $ref: '#/components/parameters/session_uuid'
@@ -1986,6 +2135,7 @@ paths:
               properties:
                 session_name:
                   type: string
+                  description: New name for the chat session.
       responses:
         '200':
           description: Chat session updated.
@@ -1996,6 +2146,7 @@ paths:
     delete:
       tags: [Portal Chat]
       summary: Delete a portal chat session
+      description: Delete an AI chat session and its associated messages.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - $ref: '#/components/parameters/session_uuid'
@@ -2011,6 +2162,7 @@ paths:
     get:
       tags: [Portal Chat]
       summary: List portal chat session messages
+      description: Retrieve all messages for a given chat session, along with running task and user input information.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - $ref: '#/components/parameters/session_uuid'
@@ -2026,16 +2178,20 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/PortalChatMessage'
+                    description: Array of chat messages in the session.
                   running_task:
                     type: boolean
+                    description: Whether there is an ongoing AI task in the session.
                   user_input:
                     type: object
                     additionalProperties: true
+                    description: Data from the user's most recent input that started a task.
 
   /api/v1/portal/{project_uuid}/chat/:
     get:
       tags: [Portal Chat]
       summary: Get the latest portal chat AI reply after a non-streaming wait
+      description: Poll for the latest AI reply in a chat session after a non-streaming request.
       parameters:
         - $ref: '#/components/parameters/project_uuid'
         - name: session_uuid
@@ -2043,6 +2199,7 @@ paths:
           required: true
           schema:
             type: string
+          description: UUID of the chat session to poll for the AI reply.
       responses:
         '200':
           description: Latest AI reply.
@@ -2053,10 +2210,13 @@ paths:
                 properties:
                   ai_reply:
                     type: string
+                    description: The latest AI reply text.
                   ai_reply_message_id:
                     type: string
+                    description: Unique identifier of the AI reply message.
                   session_uuid:
                     type: string
+                    description: UUID of the chat session.
         '404':
           $ref: '#/components/responses/NotFound'
     post:
@@ -2075,11 +2235,14 @@ paths:
               properties:
                 query:
                   type: string
+                  description: The user's chat message text.
                 session_uuid:
                   type: string
+                  description: UUID of the chat session to send the message to.
                 clear_context:
                   type: boolean
                   default: false
+                  description: If true, clears the conversation context before processing the new query.
                 stream:
                   type: boolean
                   description: Overrides the project's streaming_response setting.

@@ -10,7 +10,7 @@ servers:
   - url: https://{server}
     variables: 
       server:
-        default: cloud.seaticket.com
+        default: cloud.seaticket.ai
 
 x-readme:
   explorer-enabled: true
@@ -308,10 +308,10 @@ components:
         properties:
           key:
             type: string
-            description: Column key
+            description: Unique key identifier of the column.
           name:
             type: string
-            description: Column name
+            description: Display name of the column.
           type: 
             type: string
             description: Column type (text, single-select, multiple-select, list, int64, float64, datetime, etc.)
@@ -327,14 +327,19 @@ components:
                   properties:
                     id:
                       type: string
+                      description: Unique identifier of the select option.
                     name:
                       type: string
+                      description: Display name of the select option.
                     color:
                       type: string
+                      description: Background color hex code of the option.
                     text_color:
                       type: string
+                      description: Text color hex code of the option.
                     description:
                       type: string
+                      description: Optional description of the option.
               cascade_column_key:
                 type: string
                 description: Key of the cascade column for substate
@@ -572,10 +577,10 @@ components:
         properties:
           key:
             type: string
-            description: Column key
+            description: Unique key identifier of the column.
           name:
             type: string
-            description: Column name
+            description: Display name of the column.
           type: 
             type: string
             description: Column type (text, int64, float64, datetime, etc.)
@@ -628,11 +633,12 @@ components:
           type: array
           items:
             type: string
-          description: Hidden column keys
+          description: Keys of columns hidden from the view.
         columns_keys:
           type: array
           items:
             type: string
+          description: Keys of visible columns in display order.
 
     KnowledgeBaseTagOption:
       type: object
@@ -1187,7 +1193,7 @@ paths:
               properties:
                 title:
                   type: string
-                  description: New title
+                  description: New title for the ticket.
                 content:
                   type: string
                   description: JSON string containing text, images, and links
@@ -1196,10 +1202,10 @@ paths:
                   description: New state (open, closed, etc.)
                 type:
                   type: string
-                  description: Type name
+                  description: Name of the ticket type.
                 substate:
                   type: string
-                  description: Substate name
+                  description: Name of the ticket substate.
                 priority:
                   type: integer
                   description: Priority level (0-5)
@@ -2677,7 +2683,7 @@ paths:
               properties:
                 name:
                   type: string
-                  description: View name
+                  description: Display name of the view.
                 type:
                   type: string
                   description: View type (table, kanban, etc.)
@@ -3429,6 +3435,7 @@ paths:
               properties:
                 name:
                   type: string
+                  description: Name of the new folder.
               example:
                 name: In Progress
       responses:
@@ -3441,6 +3448,7 @@ paths:
                 properties:
                   folder:
                     type: object
+                    description: The created folder object.
               example:
                 folder:
                   _id: f001
@@ -3459,6 +3467,7 @@ paths:
       tags:
         - Tickets
       summary: Update a ticket folder
+      description: Update the name or configuration of a ticket folder.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -3475,8 +3484,10 @@ paths:
               properties:
                 folder_id:
                   type: string
+                  description: ID of the folder to update.
                 folder_data:
                   type: object
+                  description: Folder data containing fields to update (e.g., name).
               example:
                 folder_id: f001
                 folder_data:
@@ -3504,6 +3515,7 @@ paths:
       tags:
         - Tickets
       summary: Delete a ticket folder
+      description: Delete a ticket folder by its ID.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -3519,6 +3531,7 @@ paths:
               properties:
                 folder_id:
                   type: string
+                  description: ID of the folder to delete.
               example:
                 folder_id: f001
       responses:
@@ -3620,7 +3633,7 @@ paths:
               properties:
                 name:
                   type: string
-                  description: View name
+                  description: Display name of the view.
                 type:
                   type: string
                   description: View type (table, kanban, etc.)

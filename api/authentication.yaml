@@ -3,7 +3,7 @@ info:
   title: authentication
   description: |-
     The official SeaTicket API Reference
-  version: '13.0'
+  version: '1.0'
 tags:
   - name: Account-Token
     description: Access project with Account-Token
@@ -11,7 +11,10 @@ servers:
   - url: https://{server}
     variables:
       server:
-        default: cloud.seaticket.com
+        default: cloud.seaticket.ai
+
+security:
+  - AccountTokenAuth: []
 
 components:
   securitySchemes:
@@ -20,17 +23,52 @@ components:
       scheme: bearer
       description: This is the [Account-Token](/reference/authentication).
       bearerFormat: Account-Token
+    ProjectTokenAuth:
+      type: http
+      scheme: bearer
+      description: This is the [API-Token](/reference/authentication).
+      bearerFormat: API-Token
 
   schemas:
     AccountTokenResponse:
       type: object
-      description: account-token
+      description: Response containing the generated account token used to authenticate subsequent API requests.
       properties:
         token:
           type: string
+          description: The 40-character account token string.
           example: '25285a3da6fff1f7a6f9c9abc8da12dcd2bd4470'
           minLength: 40
           maxLength: 40
+    
+    ProjectTokenResponse:
+      type: object
+      description: Response containing the details of a project-level API token and its associated repository connection.
+      properties:
+        repo_id:
+          type: string
+          description: UUID of the repository or project bound to this token.
+        app_name:
+          type: string
+          description: Unique name identifying the application that registered this token.
+        generated_by:
+          type: string
+          format: email
+          description: Email of the user who generated the token.
+        permission:
+          type: string
+          enum: ['', 'rw', 'r']
+          description: Permission level of the token ('' for none, 'rw' for read-write, 'r' for read-only).
+        api_token:
+          type: string
+          minLength: 40
+          maxLength: 40
+      example:
+        repo_id: b8e06f24-edfe-44a3-b63b-ad9ecc59e1eb
+        app_name: test-app
+        api_token: 5213de63c247636fcd1808de00d64d21acc54129
+        generated_by: 1234566569491ba42905bf1647fd3f@auth.local
+        permission: r
 
 paths:
   /api2/auth-token/:
@@ -63,3 +101,88 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AccountTokenResponse'
+  
+  /api/v1/project/{project_uuid}/api-tokens/:
+    post:
+      tags:
+        - API tokens
+      summary: Create a project API token
+      description: Creates a new API token for programmatic access to project connections. The `app_name` must be unique within the project. Requires admin-level project permission.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - name: project_uuid
+          in: path
+          description: The unique identifier of a project
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$'
+          example: b8e06f24-edfe-44a3-b63b-ad9ecc59e1eb
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - app_name
+                - permission
+              properties:
+                app_name:
+                  type: string
+                  description: A unique name identifying the application that will use this token.
+                permission:
+                  type: string
+                  description: The permission level for the token (e.g., read, write).
+              example:
+                app_name: Analytics
+                permission: read
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Project API token information.
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier of the API token.
+                  app_name:
+                    type: string
+                    description: Application name bound to the token.
+                  api_token:
+                    type: string
+                    description: The raw API token string.
+                  generated_by:
+                    type: string
+                    description: Username who created the token.
+                  generated_at:
+                    type: string
+                    format: date-time
+                    description: Token creation time.
+                  last_access:
+                    type: string
+                    format: date-time
+                    description: Last access time.
+                  permission:
+                    type: string
+                    description: Token permission level.
+              example:
+                id: 1
+                app_name: BI Dashboard
+                api_token: pt_9f3c7c2f
+                generated_by: alice@example.com
+                generated_at: '2026-05-27T09:00:00Z'
+                last_access: '2026-05-27T10:00:00Z'
+                permission: read
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found
+        '500':
+          description: Internal Server Error

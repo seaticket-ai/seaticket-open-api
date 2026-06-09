@@ -8,7 +8,7 @@ servers:
   - url: https://{server}
     variables:
       server:
-        default: cloud.seaticket.com
+        default: cloud.seaticket.ai
 
 x-readme:
   explorer-enabled: true
@@ -35,21 +35,21 @@ components:
     workspace_id:
       name: workspace_id
       in: path
-      description: The unique identifier of a workspace
+      description: The unique numeric identifier of a workspace.
       required: true
       schema:
         type: integer
     project_uuid:
       name: project_uuid
       in: path
-      description: The unique identifier of a project
+      description: The unique UUID v4 identifier of the project.
       required: true
       schema:
         type: string
     group_id:
       name: group_id
       in: path
-      description: The unique identifier of a group
+      description: The unique numeric identifier of a group.
       required: true
       schema:
         type: integer
@@ -319,6 +319,7 @@ paths:
                 properties:
                   workspace_list:
                     type: array
+                    description: List of workspaces accessible to the current user.
                     items:
                       $ref: '#/components/schemas/WorkspaceInfo'
               example:
@@ -413,7 +414,9 @@ paths:
                 type: object
                 properties:
                   project:
-                    $ref: '#/components/schemas/ProjectInfo'
+                    description: The created project object.
+                    allOf:
+                      - $ref: '#/components/schemas/ProjectInfo'
               example:
                 project:
                   id: 100
@@ -491,7 +494,9 @@ paths:
                 type: object
                 properties:
                   project:
-                    $ref: '#/components/schemas/ProjectInfo'
+                    description: The updated project object.
+                    allOf:
+                      - $ref: '#/components/schemas/ProjectInfo'
               example:
                 project:
                   id: 42
@@ -551,6 +556,7 @@ paths:
                 properties:
                   success:
                     type: boolean
+                    description: Whether the operation succeeded.
               example:
                 success: true
         '400':
@@ -568,7 +574,10 @@ paths:
       tags:
         - Trash
       summary: List personal trash projects
-      description: Returns all soft-deleted projects in the current user's personal workspace.
+      description: |-
+        Returns all soft-deleted projects in the current user's personal workspace.
+        Results are ordered by deletion time descending and limited to the 500 most
+        recently deleted projects.
       security:
         - AccountTokenAuth: []
       responses:
@@ -584,6 +593,7 @@ paths:
                     description: Total number of trash projects (up to 500 returned).
                   trash_project_list:
                     type: array
+                    description: List of trash projects in the personal workspace.
                     items:
                       $ref: '#/components/schemas/TrashProjectInfo'
               example:
@@ -609,7 +619,10 @@ paths:
       tags:
         - Trash
       summary: Empty personal trash
-      description: Permanently deletes all projects in the current user's personal trash.
+      description: |-
+        Permanently deletes all projects in the current user's personal trash.
+        This operation cannot be undone. Only projects owned by the current user
+        are affected.
       security:
         - AccountTokenAuth: []
       responses:
@@ -622,6 +635,7 @@ paths:
                 properties:
                   success:
                     type: boolean
+                    description: Whether the operation succeeded.
               example:
                 success: true
         '500':
@@ -632,7 +646,10 @@ paths:
       tags:
         - Trash
       summary: Restore a personal trash project
-      description: Restores a soft-deleted project from the user's personal trash.
+      description: |-
+        Restores a soft-deleted project from the user's personal trash
+        by its project UUID. The project name is restored from its
+        deletion-appended name back to the original.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -647,6 +664,7 @@ paths:
                 properties:
                   success:
                     type: boolean
+                    description: Whether the operation succeeded.
               example:
                 success: true
         '400':
@@ -682,6 +700,7 @@ paths:
                     description: Total number of trash projects (up to 500 returned).
                   trash_project_list:
                     type: array
+                    description: List of trash projects across managed groups.
                     items:
                       $ref: '#/components/schemas/ManagedTrashProjectInfo'
               example:
@@ -712,7 +731,9 @@ paths:
       tags:
         - Groups
       summary: List group trash projects
-      description: Returns all soft-deleted projects in the specified group's workspace.
+      description: |-
+        Returns all soft-deleted projects in the specified group's workspace.
+        The requesting user must be a group admin or owner.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -727,6 +748,7 @@ paths:
                 properties:
                   trash_project_list:
                     type: array
+                    description: List of trash projects in the specified group workspace.
                     items:
                       $ref: '#/components/schemas/TrashProjectInfo'
               example:
@@ -755,7 +777,10 @@ paths:
       tags:
         - Groups
       summary: Empty group trash
-      description: Permanently deletes all projects in the specified group's trash.
+      description: |-
+        Permanently deletes all projects in the specified group's trash.
+        This operation cannot be undone. The requesting user must be a
+        group admin or owner.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -770,6 +795,7 @@ paths:
                 properties:
                   success:
                     type: boolean
+                    description: Whether the operation succeeded.
               example:
                 success: true
         '403':
@@ -784,7 +810,11 @@ paths:
       tags:
         - Groups
       summary: Restore a group trash project
-      description: Restores a soft-deleted project from the specified group's trash.
+      description: |-
+        Restores a soft-deleted project from the specified group's trash
+        by its project UUID. The project name is restored from its
+        deletion-appended name back to the original. The requesting user
+        must be a group admin or owner.
       security:
         - AccountTokenAuth: []
       parameters:
@@ -800,6 +830,7 @@ paths:
                 properties:
                   success:
                     type: boolean
+                    description: Whether the operation succeeded.
               example:
                 success: true
         '400':
@@ -888,6 +919,7 @@ paths:
                 properties:
                   results:
                     type: array
+                    description: List of search result items.
                     items:
                       $ref: '#/components/schemas/SearchResultItem'
               example:
@@ -987,6 +1019,7 @@ paths:
                 properties:
                   results:
                     type: array
+                    description: List of search result items.
                     items:
                       $ref: '#/components/schemas/SearchResultItem'
               example:
@@ -1074,6 +1107,7 @@ paths:
                 properties:
                   error_msg:
                     type: string
+                    description: Error message describing why the request failed.
               example:
                 error_msg: Feature is not enabled.
 
@@ -1116,6 +1150,7 @@ paths:
                 properties:
                   success:
                     type: boolean
+                    description: Whether the captcha verification passed.
               example:
                 success: true
         '400':
