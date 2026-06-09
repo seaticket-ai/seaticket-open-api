@@ -1,0 +1,1164 @@
+openapi: 3.0.3
+info:
+  title: SeaTicket Project Management API
+  description: |-
+    Project, workspace, trash and search management endpoints for SeaTicket.
+  version: '1.0'
+servers:
+  - url: https://{server}
+    variables:
+      server:
+        default: cloud.seaticket.ai
+
+x-readme:
+  explorer-enabled: true
+  metrics-enabled: false
+  proxy-enabled: false
+
+components:
+  securitySchemes:
+    AccountTokenAuth:
+      type: http
+      scheme: bearer
+      description: This is the Account-Token for authentication.
+    SessionAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
+      description: Session cookie authentication (for slide captcha).
+    ProjectAPITokenAuth:
+      type: http
+      scheme: bearer
+      description: Project API Token authentication (for via-project-token endpoints).
+
+  parameters:
+    workspace_id:
+      name: workspace_id
+      in: path
+      description: The unique numeric identifier of a workspace.
+      required: true
+      schema:
+        type: integer
+    project_uuid:
+      name: project_uuid
+      in: path
+      description: The unique UUID v4 identifier of the project.
+      required: true
+      schema:
+        type: string
+    group_id:
+      name: group_id
+      in: path
+      description: The unique numeric identifier of a group.
+      required: true
+      schema:
+        type: integer
+
+  schemas:
+    ProjectInfo:
+      type: object
+      description: Full project information returned by create/update operations.
+      properties:
+        id:
+          type: integer
+          description: Internal primary key of the project.
+        workspace_id:
+          type: integer
+          description: Workspace id that owns the project.
+        uuid:
+          type: string
+          description: Public UUID of the project.
+        name:
+          type: string
+          description: Project name.
+        created_at:
+          type: string
+          description: ISO 8601 creation timestamp.
+        updated_at:
+          type: string
+          description: ISO 8601 last-update timestamp.
+        color:
+          type: string
+          description: Project display color.
+        text_color:
+          type: string
+          description: Project text color.
+        icon:
+          type: string
+          description: Project icon name.
+        is_encrypted:
+          type: boolean
+          description: Whether the project is encrypted.
+        settings:
+          type: object
+          description: Project settings JSON object.
+      example:
+        id: 42
+        workspace_id: 12
+        uuid: "550e8400-e29b-41d4-a716-446655440000"
+        name: Design Docs
+        created_at: "2024-01-15T10:30:00Z"
+        updated_at: "2024-03-20T14:22:00Z"
+        color: "#2F80ED"
+        text_color: "#FFFFFF"
+        icon: folder
+        is_encrypted: false
+        settings: {}
+
+    TrashProjectInfo:
+      type: object
+      description: Project information including deletion metadata.
+      properties:
+        id:
+          type: integer
+          description: Internal primary key of the project.
+        workspace_id:
+          type: integer
+          description: Workspace id that owns the project.
+        uuid:
+          type: string
+          description: Public UUID of the project.
+        name:
+          type: string
+          description: Project name (may be appended with deletion timestamp).
+        created_at:
+          type: string
+          description: ISO 8601 creation timestamp.
+        updated_at:
+          type: string
+          description: ISO 8601 last-update timestamp.
+        color:
+          type: string
+          description: Project display color.
+        text_color:
+          type: string
+          description: Project text color.
+        icon:
+          type: string
+          description: Project icon name.
+        is_encrypted:
+          type: boolean
+          description: Whether the project is encrypted.
+        settings:
+          type: object
+          description: Project settings JSON object.
+        deleted:
+          type: boolean
+          description: Whether the project is deleted.
+        delete_time:
+          type: string
+          description: ISO 8601 deletion timestamp (empty if not deleted).
+      example:
+        id: 42
+        workspace_id: 12
+        uuid: "550e8400-e29b-41d4-a716-446655440000"
+        name: "Design Docs (deleted 2024-06-01 10:00)"
+        created_at: "2024-01-15T10:30:00Z"
+        updated_at: "2024-03-20T14:22:00Z"
+        color: "#2F80ED"
+        text_color: "#FFFFFF"
+        icon: folder
+        is_encrypted: false
+        settings: {}
+        deleted: true
+        delete_time: "2024-06-01T10:00:00Z"
+
+    ManagedTrashProjectInfo:
+      type: object
+      description: Trash project information from managed groups, including group ownership.
+      allOf:
+        - $ref: '#/components/schemas/TrashProjectInfo'
+        - type: object
+          properties:
+            owner_group_id:
+              type: integer
+              description: The group ID that owns this project.
+            owner:
+              type: string
+              description: The group name that owns this project.
+      example:
+        id: 42
+        workspace_id: 12
+        uuid: "550e8400-e29b-41d4-a716-446655440000"
+        name: "Design Docs (deleted 2024-06-01 10:00)"
+        created_at: "2024-01-15T10:30:00Z"
+        updated_at: "2024-03-20T14:22:00Z"
+        color: "#2F80ED"
+        text_color: "#FFFFFF"
+        icon: folder
+        is_encrypted: false
+        settings: {}
+        deleted: true
+        delete_time: "2024-06-01T10:00:00Z"
+        owner_group_id: 5
+        owner: Design Team
+
+    WorkspaceInfo:
+      type: object
+      description: Workspace with its contained projects.
+      properties:
+        id:
+          type: integer
+          description: Workspace id.
+        name:
+          type: string
+          description: Workspace name (e.g. "personal" for personal workspace, or group name for group workspace).
+        type:
+          type: string
+          description: Workspace type.
+          enum:
+            - personal
+            - group
+        group_id:
+          type: integer
+          description: Group ID (only present for group workspaces).
+        group_owner:
+          type: string
+          description: Group owner name (only present for group workspaces).
+        is_admin:
+          type: boolean
+          description: Whether the current user is an admin of the group (only present for group workspaces).
+        projects:
+          type: array
+          description: List of projects in this workspace.
+          items:
+            $ref: '#/components/schemas/ProjectInfo'
+      example:
+        id: 12
+        name: personal
+        type: personal
+        projects:
+          - id: 42
+            workspace_id: 12
+            uuid: "550e8400-e29b-41d4-a716-446655440000"
+            name: Design Docs
+            created_at: "2024-01-15T10:30:00Z"
+            updated_at: "2024-03-20T14:22:00Z"
+            color: "#2F80ED"
+            text_color: "#FFFFFF"
+            icon: folder
+            is_encrypted: false
+            settings: {}
+
+    GroupInfo:
+      type: object
+      description: Group search result.
+      properties:
+        id:
+          type: integer
+          description: Group ID.
+        name:
+          type: string
+          description: Group name.
+        owner:
+          type: string
+          description: Group owner username.
+        created_at:
+          type: string
+          description: ISO 8601 creation timestamp.
+      example:
+        id: 5
+        name: Design Team
+        owner: alice@example.com
+        created_at: "2024-01-10T08:00:00Z"
+
+    SearchResultItem:
+      type: object
+      description: Single search result returned by project search / via-project-token search.
+      properties:
+        type:
+          type: string
+          description: Type of the search result.
+          enum:
+            - ticket
+            - knowledge_base
+            - site
+            - seafile
+        _id:
+          type: string
+          description: Record identifier.
+        title:
+          type: string
+          description: Title of the search result.
+        content:
+          type: string
+          description: Content snippet of the search result.
+        modified_time:
+          type: string
+          description: Last modified timestamp.
+        connection_id:
+          type: integer
+          description: Connection ID (only for site and seafile types).
+      example:
+        type: ticket
+        _id: "1"
+        title: Fix login issue
+        content: "Login fails after password reset..."
+        modified_time: "2024-06-01T10:00:00Z"
+
+
+paths:
+  # ─── Workspaces ──────────────────────────────────────────────
+  /api/v1/workspaces/:
+    get:
+      tags:
+        - Workspaces
+      summary: List all workspaces
+      description: |-
+        Returns all workspaces the current user has access to, including
+        their personal workspace and any group workspaces. Each workspace
+        includes its contained projects.
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workspace_list:
+                    type: array
+                    description: List of workspaces accessible to the current user.
+                    items:
+                      $ref: '#/components/schemas/WorkspaceInfo'
+              example:
+                workspace_list:
+                  - id: 12
+                    name: personal
+                    type: personal
+                    projects:
+                      - id: 42
+                        workspace_id: 12
+                        uuid: "550e8400-e29b-41d4-a716-446655440000"
+                        name: Design Docs
+                        created_at: "2024-01-15T10:30:00Z"
+                        updated_at: "2024-03-20T14:22:00Z"
+                        color: "#2F80ED"
+                        text_color: "#FFFFFF"
+                        icon: folder
+                        is_encrypted: false
+                        settings: {}
+                  - id: 15
+                    name: Design Team
+                    type: group
+                    group_id: 5
+                    group_owner: alice@example.com
+                    is_admin: true
+                    projects:
+                      - id: 55
+                        workspace_id: 15
+                        uuid: "660e8400-e29b-41d4-a716-446655440001"
+                        name: UX Research
+                        created_at: "2024-02-01T09:00:00Z"
+                        updated_at: "2024-04-10T11:00:00Z"
+                        color: "#27AE60"
+                        text_color: "#FFFFFF"
+                        icon: research
+                        is_encrypted: false
+                        settings: {}
+        '500':
+          description: Internal Server Error
+
+  # ─── Projects ─────────────────────────────────────────────────
+  /api/v1/projects/:
+    post:
+      tags:
+        - Projects
+      summary: Create a project
+      description: |-
+        Creates a new project inside the specified workspace or for the specified owner.
+        A workspace must be provided via `owner` or `workspace_id`, otherwise the
+        user's personal workspace is used.
+      security:
+        - AccountTokenAuth: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  description: Project name.
+                owner:
+                  type: string
+                  description: Owner string (e.g. username or "{group_id}@seafile_group").
+                workspace_id:
+                  type: integer
+                  description: Workspace ID to create the project in (optional; defaults to current user's personal workspace).
+                color:
+                  type: string
+                  description: Project display color (hex).
+                text_color:
+                  type: string
+                  description: Project text color (hex).
+                icon:
+                  type: string
+                  description: Project icon name.
+            example:
+              name: New Project
+              workspace_id: 12
+              color: "#2F80ED"
+              text_color: "#FFFFFF"
+              icon: folder
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  project:
+                    description: The created project object.
+                    allOf:
+                      - $ref: '#/components/schemas/ProjectInfo'
+              example:
+                project:
+                  id: 100
+                  workspace_id: 12
+                  uuid: "770e8400-e29b-41d4-a716-446655440002"
+                  name: New Project
+                  created_at: "2024-06-15T12:00:00Z"
+                  updated_at: "2024-06-15T12:00:00Z"
+                  color: "#2F80ED"
+                  text_color: "#FFFFFF"
+                  icon: folder
+                  is_encrypted: false
+                  settings: {}
+        '400':
+          description: Bad Request (name invalid, project already exists, or project limit exceeded)
+        '403':
+          description: Permission denied
+        '500':
+          description: Internal Server Error
+
+  /api/v1/workspace/{workspace_id}/project/:
+    put:
+      tags:
+        - Projects
+      summary: Update a project
+      description: |-
+        Updates an existing project's properties. The project is identified by
+        its current name and workspace. Supports renaming, moving to another workspace,
+        changing colors/icon, and updating settings.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/workspace_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  description: Current project name (used to identify the project).
+                new_name:
+                  type: string
+                  description: New name for the project.
+                color:
+                  type: string
+                  description: New project display color (hex).
+                text_color:
+                  type: string
+                  description: New project text color (hex).
+                icon:
+                  type: string
+                  description: New project icon name.
+                settings:
+                  type: string
+                  description: JSON string of updated project settings.
+                workspace_id:
+                  type: integer
+                  description: Target workspace ID to move the project to.
+            example:
+              name: Design Docs
+              new_name: Design System
+              color: "#E74C3C"
+              settings: '{"portal":{"enable_portal":true}}'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  project:
+                    description: The updated project object.
+                    allOf:
+                      - $ref: '#/components/schemas/ProjectInfo'
+              example:
+                project:
+                  id: 42
+                  workspace_id: 12
+                  uuid: "550e8400-e29b-41d4-a716-446655440000"
+                  name: Design System
+                  created_at: "2024-01-15T10:30:00Z"
+                  updated_at: "2024-06-15T14:00:00Z"
+                  color: "#E74C3C"
+                  text_color: "#FFFFFF"
+                  icon: folder
+                  is_encrypted: false
+                  settings:
+                    portal:
+                      enable_portal: true
+        '400':
+          description: Bad Request (name invalid, target project name already exists, project limit exceeded)
+        '403':
+          description: Permission denied
+        '404':
+          description: Workspace or project not found
+        '500':
+          description: Internal Server Error
+
+    delete:
+      tags:
+        - Projects
+      summary: Delete a project (move to trash)
+      description: |-
+        Soft-deletes a project by moving it to the trash. The project can be
+        restored from the trash later.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/workspace_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  description: Project name to delete.
+            example:
+              name: Design System
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Whether the operation succeeded.
+              example:
+                success: true
+        '400':
+          description: Bad Request (name invalid)
+        '403':
+          description: Permission denied
+        '404':
+          description: Workspace or project not found
+        '500':
+          description: Internal Server Error
+
+  # ─── Trash ─────────────────────────────────────────────────────
+  /api/v1/trash-projects/:
+    get:
+      tags:
+        - Trash
+      summary: List personal trash projects
+      description: |-
+        Returns all soft-deleted projects in the current user's personal workspace.
+        Results are ordered by deletion time descending and limited to the 500 most
+        recently deleted projects.
+      security:
+        - AccountTokenAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    description: Total number of trash projects (up to 500 returned).
+                  trash_project_list:
+                    type: array
+                    description: List of trash projects in the personal workspace.
+                    items:
+                      $ref: '#/components/schemas/TrashProjectInfo'
+              example:
+                count: 2
+                trash_project_list:
+                  - id: 42
+                    workspace_id: 12
+                    uuid: "550e8400-e29b-41d4-a716-446655440000"
+                    name: "Design Docs (deleted 2024-06-01 10:00)"
+                    created_at: "2024-01-15T10:30:00Z"
+                    updated_at: "2024-03-20T14:22:00Z"
+                    color: "#2F80ED"
+                    text_color: "#FFFFFF"
+                    icon: folder
+                    is_encrypted: false
+                    settings: {}
+                    deleted: true
+                    delete_time: "2024-06-01T10:00:00Z"
+        '500':
+          description: Internal Server Error
+
+    delete:
+      tags:
+        - Trash
+      summary: Empty personal trash
+      description: |-
+        Permanently deletes all projects in the current user's personal trash.
+        This operation cannot be undone. Only projects owned by the current user
+        are affected.
+      security:
+        - AccountTokenAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Whether the operation succeeded.
+              example:
+                success: true
+        '500':
+          description: Internal Server Error
+
+  /api/v1/trash-projects/{project_uuid}/:
+    put:
+      tags:
+        - Trash
+      summary: Restore a personal trash project
+      description: |-
+        Restores a soft-deleted project from the user's personal trash
+        by its project UUID. The project name is restored from its
+        deletion-appended name back to the original.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Whether the operation succeeded.
+              example:
+                success: true
+        '400':
+          description: Bad Request (a project with the same name already exists)
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found
+        '500':
+          description: Internal Server Error
+
+  # ─── Group Trash ───────────────────────────────────────────────
+  /api/v1/groups/trash-projects/:
+    get:
+      tags:
+        - Groups
+      summary: List managed groups trash projects
+      description: |-
+        Returns all soft-deleted projects across all groups where the current user
+        is an admin. Includes group ownership information in each project.
+      security:
+        - AccountTokenAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    description: Total number of trash projects (up to 500 returned).
+                  trash_project_list:
+                    type: array
+                    description: List of trash projects across managed groups.
+                    items:
+                      $ref: '#/components/schemas/ManagedTrashProjectInfo'
+              example:
+                count: 1
+                trash_project_list:
+                  - id: 55
+                    workspace_id: 15
+                    uuid: "660e8400-e29b-41d4-a716-446655440001"
+                    name: "UX Research (deleted 2024-05-20 16:00)"
+                    created_at: "2024-02-01T09:00:00Z"
+                    updated_at: "2024-04-10T11:00:00Z"
+                    color: "#27AE60"
+                    text_color: "#FFFFFF"
+                    icon: research
+                    is_encrypted: false
+                    settings: {}
+                    deleted: true
+                    delete_time: "2024-05-20T16:00:00Z"
+                    owner_group_id: 5
+                    owner: Design Team
+        '403':
+          description: Feature is not enabled (no org context)
+        '500':
+          description: Internal Server Error
+
+  /api/v1/groups/{group_id}/trash-projects/:
+    get:
+      tags:
+        - Groups
+      summary: List group trash projects
+      description: |-
+        Returns all soft-deleted projects in the specified group's workspace.
+        The requesting user must be a group admin or owner.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/group_id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trash_project_list:
+                    type: array
+                    description: List of trash projects in the specified group workspace.
+                    items:
+                      $ref: '#/components/schemas/TrashProjectInfo'
+              example:
+                trash_project_list:
+                  - id: 55
+                    workspace_id: 15
+                    uuid: "660e8400-e29b-41d4-a716-446655440001"
+                    name: "UX Research (deleted 2024-05-20 16:00)"
+                    created_at: "2024-02-01T09:00:00Z"
+                    updated_at: "2024-04-10T11:00:00Z"
+                    color: "#27AE60"
+                    text_color: "#FFFFFF"
+                    icon: research
+                    is_encrypted: false
+                    settings: {}
+                    deleted: true
+                    delete_time: "2024-05-20T16:00:00Z"
+        '403':
+          description: Permission denied (user is not group admin or owner)
+        '404':
+          description: Group not found
+        '500':
+          description: Internal Server Error
+
+    delete:
+      tags:
+        - Groups
+      summary: Empty group trash
+      description: |-
+        Permanently deletes all projects in the specified group's trash.
+        This operation cannot be undone. The requesting user must be a
+        group admin or owner.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/group_id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Whether the operation succeeded.
+              example:
+                success: true
+        '403':
+          description: Permission denied (user is not group admin or owner)
+        '404':
+          description: Group not found
+        '500':
+          description: Internal Server Error
+
+  /api/v1/groups/{group_id}/trash-projects/{project_uuid}/:
+    put:
+      tags:
+        - Groups
+      summary: Restore a group trash project
+      description: |-
+        Restores a soft-deleted project from the specified group's trash
+        by its project UUID. The project name is restored from its
+        deletion-appended name back to the original. The requesting user
+        must be a group admin or owner.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/group_id'
+        - $ref: '#/components/parameters/project_uuid'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Whether the operation succeeded.
+              example:
+                success: true
+        '400':
+          description: Bad Request (a project with the same name already exists)
+        '403':
+          description: Permission denied (user is not group admin or owner)
+        '404':
+          description: Project not found
+        '500':
+          description: Internal Server Error
+
+  # ─── Search ────────────────────────────────────────────────────
+  /api/v1/search/:
+    post:
+      tags:
+        - Search
+      summary: Search across project sources
+      description: |-
+        Performs keyword or semantic search across all connected data sources
+        (tickets, knowledge base, sites, seafile files) within a project.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - name: count
+          in: query
+          description: Maximum number of results to return (default 20).
+          schema:
+            type: integer
+            default: 20
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - project_uuid
+                - workspace_id
+                - query
+              properties:
+                project_uuid:
+                  type: string
+                  description: Project UUID.
+                workspace_id:
+                  type: integer
+                  description: Workspace ID that owns the project.
+                query:
+                  type: string
+                  description: Search query string.
+                search_type:
+                  type: string
+                  enum:
+                    - keyword_search
+                    - semantic_search
+                  default: keyword_search
+                  description: Type of search to perform.
+                connection_ids:
+                  type: array
+                  items:
+                    type: integer
+                  description: Connection IDs to search (required if extra_sources is empty).
+                extra_sources:
+                  type: array
+                  items:
+                    type: string
+                  description: Extra source types to include (e.g. ["ticket", "knowledge_base"]).
+                time_from:
+                  type: string
+                  description: Start of time range filter (ISO 8601).
+                time_to:
+                  type: string
+                  description: End of time range filter (ISO 8601).
+            example:
+              project_uuid: "550e8400-e29b-41d4-a716-446655440000"
+              workspace_id: 12
+              query: "login issue"
+              search_type: keyword_search
+              connection_ids: [1, 3, 7]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    description: List of search result items.
+                    items:
+                      $ref: '#/components/schemas/SearchResultItem'
+              example:
+                results:
+                  - type: ticket
+                    _id: "1"
+                    title: Fix login issue
+                    content: "Login fails after password reset. Users report..."
+                    modified_time: "2024-06-01T10:00:00Z"
+                  - type: knowledge_base
+                    _id: "5"
+                    title: Developer Guide
+                    content: "This guide covers the authentication flow..."
+                    modified_time: "2024-05-20T08:30:00Z"
+                  - type: site
+                    _id: "10"
+                    title: Homepage
+                    content: "Welcome to our documentation site..."
+                    modified_time: "2024-04-15T12:00:00Z"
+                    connection_id: 3
+                  - type: seafile
+                    _id: "15"
+                    title: architecture.pdf
+                    content: "System architecture overview..."
+                    modified_time: "2024-03-10T09:00:00Z"
+                    connection_id: 7
+        '400':
+          description: Bad Request (missing required parameters)
+        '403':
+          description: Permission denied
+        '404':
+          description: Workspace or project not found
+
+  /api/v1/via-project-token/search/:
+    post:
+      tags:
+        - Search
+      summary: Search via project API token
+      description: |-
+        Performs keyword or semantic search using a Project API Token for
+        authentication. The token identifies the project context.
+      security:
+        - ProjectAPITokenAuth: []
+      parameters:
+        - name: count
+          in: query
+          description: Maximum number of results to return (default 20).
+          schema:
+            type: integer
+            default: 20
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - query
+              properties:
+                query:
+                  type: string
+                  description: Search query string.
+                search_type:
+                  type: string
+                  enum:
+                    - keyword_search
+                    - semantic_search
+                  default: keyword_search
+                  description: Type of search to perform.
+                connection_ids:
+                  type: array
+                  items:
+                    type: integer
+                  description: Connection IDs to search (required if extra_sources is empty).
+                extra_sources:
+                  type: array
+                  items:
+                    type: string
+                  description: Extra source types to include (e.g. ["ticket", "knowledge_base"]).
+                time_from:
+                  type: string
+                  description: Start of time range filter (ISO 8601).
+                time_to:
+                  type: string
+                  description: End of time range filter (ISO 8601).
+            example:
+              query: "login issue"
+              search_type: keyword_search
+              connection_ids: [1, 3, 7]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    description: List of search result items.
+                    items:
+                      $ref: '#/components/schemas/SearchResultItem'
+              example:
+                results:
+                  - type: ticket
+                    _id: "1"
+                    title: Fix login issue
+                    content: "Login fails after password reset..."
+                    modified_time: "2024-06-01T10:00:00Z"
+        '400':
+          description: Bad Request (missing required parameters)
+        '403':
+          description: Permission denied
+        '404':
+          description: Project or workspace not found
+
+  # ─── Search Group ──────────────────────────────────────────────
+  /api/v1/search-group/:
+    get:
+      tags:
+        - Search
+      summary: Search groups
+      description: |-
+        Searches for groups by name (case-insensitive substring match)
+        within the current organization. Requires global address book permission.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - name: q
+          in: query
+          description: Search query string (matched case-insensitively against group names).
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GroupInfo'
+              example:
+                - id: 5
+                  name: Design Team
+                  owner: alice@example.com
+                  created_at: "2024-01-10T08:00:00Z"
+                - id: 8
+                  name: Design Review
+                  owner: bob@example.com
+                  created_at: "2024-02-15T09:30:00Z"
+        '400':
+          description: Bad Request (q parameter missing)
+        '403':
+          description: Permission denied (user cannot use global address book)
+
+  # ─── Slide Captcha ─────────────────────────────────────────────
+  /api/v1/slide-captcha/:
+    get:
+      tags:
+        - Captcha
+      summary: Get slide captcha image
+      description: |-
+        Returns a raw base64-encoded JPEG image string of a slide captcha puzzle.
+        The client should prepend "data:image/jpeg;base64," to construct a data URI.
+        The server stores the correct position in the session for later
+        verification via the POST endpoint.
+      security:
+        - SessionAuth: []
+      responses:
+        '200':
+          description: OK - Raw base64-encoded JPEG image string
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: /9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGB...
+        '403':
+          description: Feature is not enabled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error_msg:
+                    type: string
+                    description: Error message describing why the request failed.
+              example:
+                error_msg: Feature is not enabled.
+
+    post:
+      tags:
+        - Captcha
+      summary: Verify slide captcha
+      description: |-
+        Verifies the slide captcha by submitting the x, y position of the
+        puzzle piece. The position must be within 3 pixels of the target x
+        and exactly match the target y.
+      security:
+        - SessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - x
+                - y
+              properties:
+                x:
+                  type: integer
+                  description: X position of the puzzle piece.
+                y:
+                  type: integer
+                  description: Y position of the puzzle piece.
+            example:
+              x: 150
+              y: 55
+      responses:
+        '200':
+          description: Verification succeeded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Whether the captcha verification passed.
+              example:
+                success: true
+        '400':
+          description: Bad Request (x or y invalid, or verification failed)
+        '403':
+          description: Feature is not enabled
+        '404':
+          description: Slide captcha not found in session
+
+security:
+  - AccountTokenAuth: []

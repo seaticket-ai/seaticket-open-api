@@ -1,0 +1,561 @@
+openapi: 3.0.3
+info:
+  title: SeaTicket Project Tags and Files API
+  description: |-
+    Project tag management and file upload/download operations for SeaTicket projects.
+  version: '1.0'
+servers:
+  - url: https://{server}
+    variables:
+      server:
+        default: cloud.seaticket.ai
+
+x-readme:
+  explorer-enabled: true
+  metrics-enabled: false
+  proxy-enabled: false
+
+components:
+  securitySchemes:
+    AccountTokenAuth:
+      type: http
+      scheme: bearer
+      description: This is the Account-Token for authentication.
+
+  parameters:
+    project_uuid:
+      name: project_uuid
+      in: path
+      description: The unique UUID v4 identifier of the project.
+      required: true
+      schema:
+        type: string
+    tag_id:
+      name: tag_id
+      in: path
+      description: The unique integer identifier of a tag.
+      required: true
+      schema:
+        type: integer
+    connection_id:
+      name: connection_id
+      in: path
+      description: The unique integer identifier of a project connection.
+      required: true
+      schema:
+        type: integer
+    file_path:
+      name: file_path
+      in: path
+      description: The path of the file resource.
+      required: true
+      schema:
+        type: string
+    start:
+      name: start
+      in: query
+      description: The starting offset for paginated results.
+      required: false
+      schema:
+        type: integer
+        default: 0
+    limit:
+      name: limit
+      in: query
+      description: The maximum number of items to return.
+      required: false
+      schema:
+        type: integer
+        default: 1000
+
+  schemas:
+    TagColumn:
+      type: object
+      description: Metadata column information for tags listing.
+      additionalProperties: true
+      example:
+        key: name
+        name: Name
+        type: text
+    TagRecord:
+      type: object
+      description: A tag record representing a label associated with project tickets.
+      properties:
+        _pk:
+          type: integer
+          description: The primary key identifier of the tag.
+        name:
+          type: string
+          description: The display name of the tag.
+        color:
+          type: string
+          description: The background color of the tag in hex format.
+        text_color:
+          type: string
+          description: The text color of the tag in hex format.
+        description:
+          type: string
+          description: A brief description of the tag's purpose.
+      example:
+        _pk: 11
+        name: bug
+        color: '#FF5733'
+        text_color: '#FFFFFF'
+        description: Bug related
+    TagListResponse:
+      type: object
+      properties:
+        columns:
+          type: array
+          description: Metadata describing the columns returned in the response.
+          items:
+            $ref: '#/components/schemas/TagColumn'
+        tags:
+          type: array
+          description: An array of tag records belonging to the project.
+          items:
+            $ref: '#/components/schemas/TagRecord'
+      example:
+        columns:
+          - key: name
+            name: Name
+            type: text
+        tags:
+          - _pk: 11
+            name: bug
+            color: '#FF5733'
+            text_color: '#FFFFFF'
+            description: Bug related
+    TicketListResponse:
+      type: object
+      description: Response containing tickets, their column metadata, and linked record titles.
+      additionalProperties: true
+      example:
+        tickets:
+          - _pk: 1
+            title: Fix login
+            state: open
+        columns:
+          - key: title
+            name: Title
+            type: text
+        linked_record_titles:
+          "1_2": Ticket #42
+    UploadFileResponse:
+      type: object
+      properties:
+        url:
+          type: string
+          description: The URL path of the uploaded temporary file.
+      example:
+        url: /upload-file/project/7/tmp-abc123.png
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Indicates whether the operation was successful.
+      example:
+        success: true
+
+paths:
+  /api/v1/project/{project_uuid}/tags/:
+    get:
+      tags:
+        - Tags
+      summary: List tags
+      description: Retrieve all tags associated with a project, with optional pagination.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/start'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagListResponse'
+              example:
+                columns:
+                  - key: name
+                    name: Name
+                    type: text
+                tags:
+                  - _pk: 11
+                    name: bug
+                    color: '#FF5733'
+                    text_color: '#FFFFFF'
+                    description: Bug related
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found
+        '500':
+          description: Internal Server Error
+
+    post:
+      tags:
+        - Tags
+      summary: Create a tag
+      description: Create a new tag with a name, color, text color, and an optional description.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - name
+                - color
+                - text_color
+              properties:
+                name:
+                  type: string
+                  description: The display name of the new tag.
+                description:
+                  type: string
+                  description: An optional description for the tag.
+                color:
+                  type: string
+                  description: The background color of the tag in hex format.
+                text_color:
+                  type: string
+                  description: The text color of the tag in hex format.
+              example:
+                name: bug
+                description: Bug related
+                color: '#FF5733'
+                text_color: '#FFFFFF'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tag:
+                    $ref: '#/components/schemas/TagRecord'
+              example:
+                tag:
+                  _pk: 11
+                  name: bug
+                  color: '#FF5733'
+                  text_color: '#FFFFFF'
+                  description: Bug related
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found
+        '500':
+          description: Internal Server Error
+
+    delete:
+      tags:
+        - Tags
+      summary: Batch delete tags
+      description: Delete multiple tags from a project by providing a list of tag IDs.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tag_ids
+              properties:
+                tag_ids:
+                  type: array
+                  description: An array of tag primary key IDs to delete.
+                  items:
+                    type: integer
+              example:
+                tag_ids:
+                  - 11
+                  - 12
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                success: true
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found
+        '500':
+          description: Internal Server Error
+
+  /api/v1/project/{project_uuid}/tags/{tag_id}/:
+    get:
+      tags:
+        - Tags
+      summary: Get tickets by tag
+      description: Retrieve all tickets filtered by a specific tag, including linked record titles.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/tag_id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketListResponse'
+              example:
+                tickets:
+                  - _pk: 1
+                    title: Fix login
+                    state: open
+                columns:
+                  - key: title
+                    name: Title
+                    type: text
+                linked_record_titles:
+                  "1_2": Ticket #42
+        '403':
+          description: Permission denied
+        '404':
+          description: Tag not found
+        '500':
+          description: Internal Server Error
+
+    put:
+      tags:
+        - Tags
+      summary: Update a tag
+      description: Update an existing tag's name, description, color, or text color.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/tag_id'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: The updated display name of the tag.
+                description:
+                  type: string
+                  description: The updated description of the tag.
+                color:
+                  type: string
+                  description: The updated background color of the tag in hex format.
+                text_color:
+                  type: string
+                  description: The updated text color of the tag in hex format.
+              example:
+                name: bug
+                description: Bug related
+                color: '#FF5733'
+                text_color: '#FFFFFF'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                success: true
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found or tag not found
+        '500':
+          description: Internal Server Error
+
+    delete:
+      tags:
+        - Tags
+      summary: Delete a tag
+      description: Delete a single tag from a project by its tag ID.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/tag_id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                success: true
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found
+        '500':
+          description: Internal Server Error
+
+  /api/v1/project/{project_uuid}/upload-file/:
+    post:
+      tags:
+        - Files
+      summary: Upload a file to temporary storage
+      description: Upload a file to temporary storage associated with the project.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The binary file content to upload.
+              example:
+                file: (binary)
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadFileResponse'
+              example:
+                url: /upload-file/project/7/tmp-abc123.png
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found
+        '500':
+          description: Internal Server Error
+
+  /upload-file/project/{project_uuid}/{file_path}:
+    get:
+      tags:
+        - Files
+      summary: Get a temporary uploaded file
+      description: Retrieve a previously uploaded temporary file by its path.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/file_path'
+      responses:
+        '200':
+          description: OK
+        '304':
+          description: Not Modified
+        '403':
+          description: Permission denied
+        '404':
+          description: File not exist or project not found
+        '500':
+          description: Internal Server Error
+
+  /api/v1/project/{project_uuid}/{file_path}:
+    delete:
+      tags:
+        - Files
+      summary: Delete a project file
+      description: Delete a project file from the project's storage.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/file_path'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                success: true
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found
+        '500':
+          description: Internal Server Error
+
+  /file/project/{project_uuid}/connections/{connection_id}/path/{file_path}:
+    get:
+      tags:
+        - Files
+      summary: Download a connection file
+      description: Download a file from a specific project connection by its path.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/connection_id'
+        - $ref: '#/components/parameters/file_path'
+      responses:
+        '200':
+          description: OK
+        '304':
+          description: Not Modified
+        '403':
+          description: Permission denied
+        '404':
+          description: File not exist or project not found
+        '500':
+          description: Internal Server Error
+
+  /file/project/{project_uuid}/{file_path}:
+    get:
+      tags:
+        - Files
+      summary: Download a project file
+      description: Download a project file directly by its path.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/file_path'
+      responses:
+        '200':
+          description: OK
+        '304':
+          description: Not Modified
+        '403':
+          description: Permission denied
+        '404':
+          description: File not exist or project not found
+        '500':
+          description: Internal Server Error

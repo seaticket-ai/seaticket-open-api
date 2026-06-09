@@ -1,0 +1,492 @@
+openapi: 3.0.3
+info:
+  title: SeaTicket Project AI API
+  description: |-
+    AI-powered conversion, analysis, and similarity endpoints for SeaTicket projects.
+  version: '1.0'
+servers:
+  - url: https://{server}
+    variables:
+      server:
+        default: cloud.seaticket.ai
+
+x-readme:
+  explorer-enabled: true
+  metrics-enabled: false
+  proxy-enabled: false
+
+components:
+  securitySchemes:
+    AccountTokenAuth:
+      type: http
+      scheme: bearer
+      description: This is the Account-Token for authentication.
+
+  parameters:
+    project_uuid:
+      name: project_uuid
+      in: path
+      description: The unique UUID v4 identifier of the project.
+      required: true
+      schema:
+        type: string
+    task_id:
+      name: task_id
+      in: path
+      description: The unique identifier of a background embedding analysis task, returned when the task is submitted.
+      required: true
+      schema:
+        type: string
+
+  schemas:
+    AIRecordToTicketResponse:
+      type: object
+      description: Response containing the AI-generated title and content for converting an external record to an internal ticket.
+      properties:
+        title:
+          type: string
+          description: The AI-generated title suggested for the new ticket.
+        content:
+          type: string
+          description: The AI-generated content (body) suggested for the new ticket.
+        related_url:
+          type: string
+          description: The absolute URL linking back to the original source record within the project.
+        linked_connection_records:
+          type: array
+          items:
+            type: string
+          description: A list of linked connection record IDs, typically in the format `{connection_id}_{record_id}`.
+      example:
+        title: Login issue
+        content: User reports that login fails after password reset.
+        related_url: https://example.com/issues/123
+        linked_connection_records:
+          - '7_3'
+    AIPortalIssueToTicketResponse:
+      type: object
+      description: Response containing AI-generated ticket content converted from a portal issue.
+      properties:
+        title:
+          type: string
+          description: The AI-generated title suggested for the new ticket.
+        content:
+          type: string
+          description: The AI-generated content (body) suggested for the new ticket.
+        related_url:
+          type: string
+          description: The absolute URL linking back to the original portal issue.
+        linked_connection_records:
+          type: array
+          description: A list of linked connection record IDs, specifically formatted as `portal_{issue_id}`.
+          items:
+            type: string
+      example:
+        title: Portal issue
+        content: Portal issue summary.
+        related_url: /portal/7/issue/123
+        linked_connection_records:
+          - portal_123
+    AITicketToKBResponse:
+      type: object
+      description: Response containing the AI-generated draft for a knowledge base article.
+      properties:
+        kb_title:
+          type: string
+          description: The AI-generated title suggested for the knowledge base article.
+        kb_content:
+          type: string
+          description: The AI-generated content suggested for the knowledge base article.
+      example:
+        kb_title: Login troubleshooting
+        kb_content: Steps to diagnose and fix login failures.
+    TaskIdResponse:
+      type: object
+      description: Response containing the identifier for a submitted background task.
+      properties:
+        task_id:
+          type: string
+          description: The unique identifier for the submitted background task, which can be used to poll for status.
+      example:
+        task_id: job_123
+    RelatedRecordsResponse:
+      type: object
+      description: Response containing ranked similar records.
+      properties:
+        related_records:
+          type: array
+          description: Ranked related records.
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                description: Type of the record (e.g., ticket, github_issue, discourse_forum, email).
+              _id:
+                type: string
+                description: The ID of the record.
+              title:
+                type: string
+                description: Title of the record.
+              content:
+                type: string
+                description: Content or summary of the record.
+              modified_time:
+                type: string
+                description: The last modified time of the record.
+              connection_id:
+                type: integer
+                description: The connection ID (only present for external connection records).
+      example:
+        related_records:
+          - type: ticket
+            _id: 2
+            title: Same issue
+            content: Similar login failure.
+            modified_time: '2026-05-27T09:00:00Z'
+          - type: github_issue
+            _id: 9
+            connection_id: 7
+            title: Similar GitHub issue
+            content: Root cause appears to be the same.
+            modified_time: '2026-05-26T08:00:00Z'
+    TaskStatusResponse:
+      type: object
+      description: Response containing the current status and progress of a background task.
+      properties:
+        task_id:
+          type: string
+          description: The unique identifier of the background task.
+        status:
+          type: string
+          description: Current status of the task (e.g., pending, running, success, failed).
+        progress:
+          type: integer
+          description: Progress percentage of the task (0-100).
+      additionalProperties: true
+      example:
+        task_id: job_123
+        status: success
+        progress: 100
+
+paths:
+  /api/v1/ai/convert-record-to-ticket/:
+    post:
+      tags:
+        - AI
+      summary: Convert a record to ticket content
+      description: |
+        Takes an external connection record (like a GitHub issue or Discourse topic) and uses AI to generate a suggested title and content for an internal ticket.
+        Deducts from the organization's AI credit balance. Fails with 402 if credits are insufficient.
+      security:
+        - AccountTokenAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - project_uuid
+                - connection_id
+                - record_id
+              properties:
+                project_uuid:
+                  type: string
+                  description: The unique UUID v4 identifier of the project.
+                connection_id:
+                  type: integer
+                  description: The ID of the external connection (e.g., GitHub, Discourse) where the record resides.
+                record_id:
+                  type: integer
+                  description: The specific record ID within the connection.
+              example:
+                project_uuid: 7a358454-2999-47c0-a68d-1087e7ab2d3b
+                connection_id: 7
+                record_id: 3
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIRecordToTicketResponse'
+              example:
+                title: Login issue
+                content: User reports that login fails after password reset.
+                related_url: https://example.com/issues/123
+                linked_connection_records:
+                  - '7_3'
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied
+        '404':
+          description: Project, connection, or record not found
+        '402':
+          description: AI credit not enough
+        '500':
+          description: Internal Server Error
+
+  /api/v1/ai/convert-portal-issue-to-ticket/:
+    post:
+      tags:
+        - AI
+      summary: Convert a portal issue to ticket content
+      description: |
+        Takes an external portal issue (submitted by end-users) and uses AI to generate a suggested title and content for an internal ticket.
+        Fails if a ticket has already been created for this issue. Deducts from the organization's AI credit balance.
+      security:
+        - AccountTokenAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - project_uuid
+                - issue_id
+              properties:
+                project_uuid:
+                  type: string
+                  description: The unique UUID v4 identifier of the project.
+                issue_id:
+                  type: integer
+                  description: The ID of the portal issue to convert.
+              example:
+                project_uuid: 7a358454-2999-47c0-a68d-1087e7ab2d3b
+                issue_id: 123
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIPortalIssueToTicketResponse'
+              example:
+                title: Portal issue
+                content: Portal issue summary.
+                related_url: /portal/7/issue/123
+                linked_connection_records:
+                  - portal_123
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied
+        '404':
+          description: Project or issue not found
+        '402':
+          description: AI credit not enough
+        '500':
+          description: Internal Server Error
+
+  /api/v1/ai/convert-ticket-to-knowledge-base/:
+    post:
+      tags:
+        - AI
+      summary: Convert ticket content to knowledge base content
+      description: |
+        Takes the title, content, and top comments of a resolved ticket and uses AI to generate a knowledge base article draft.
+        Deducts from the organization's AI credit balance.
+      security:
+        - AccountTokenAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - project_uuid
+              properties:
+                project_uuid:
+                  type: string
+                  description: The unique UUID v4 identifier of the project.
+                ticket_title:
+                  type: string
+                  description: The original title of the resolved ticket.
+                ticket_content:
+                  type: string
+                  description: The original content/body of the resolved ticket.
+                ticket_comments:
+                  type: array
+                  description: A list of relevant comments from the ticket to be included in the AI context.
+                  items:
+                    type: object
+              example:
+                project_uuid: 7a358454-2999-47c0-a68d-1087e7ab2d3b
+                ticket_title: Login issue
+                ticket_content: User reports that login fails after password reset.
+                ticket_comments:
+                  - creator: bob@example.com
+                    created_time: '2026-05-27T08:00:00Z'
+                    content: I also saw this issue.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AITicketToKBResponse'
+              example:
+                kb_title: Login troubleshooting
+                kb_content: Steps to diagnose and fix login failures.
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied
+        '404':
+          description: Project or workspace not found
+        '402':
+          description: AI credit not enough
+        '500':
+          description: Internal Server Error
+
+  /api/v1/ai/embedding-analysis/:
+    post:
+      tags:
+        - AI
+      summary: Submit embedding analysis task
+      description: |
+        Submits a background task to analyze and generate embeddings for records within the specified connections.
+        Returns a task ID that can be used to poll for status. Fails with 409 if an analysis task is already running for these connections.
+      security:
+        - AccountTokenAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - project_uuid
+                - connection_ids
+              properties:
+                project_uuid:
+                  type: string
+                  description: The unique UUID v4 identifier of the project.
+                connection_ids:
+                  type: array
+                  description: A list of connection IDs to analyze and generate embeddings for.
+                  items:
+                    type: integer
+                start_date:
+                  type: string
+                  description: Optional start date for filtering records to analyze (e.g., 'YYYY-MM-DD').
+                end_date:
+                  type: string
+                  description: Optional end date for filtering records to analyze (e.g., 'YYYY-MM-DD').
+              example:
+                project_uuid: 7a358454-2999-47c0-a68d-1087e7ab2d3b
+                connection_ids:
+                  - 7
+                  - 8
+                start_date: '2026-05-01'
+                end_date: '2026-05-27'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskIdResponse'
+              example:
+                task_id: job_123
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found
+        '409':
+          description: Task conflict
+        '500':
+          description: Internal Server Error
+
+  /api/v1/ai/embedding-analysis-task-status/{task_id}/:
+    get:
+      tags:
+        - AI
+      summary: Get embedding analysis task status
+      description: Retrieves the current status (e.g., pending, running, success, failed) and progress of a previously submitted embedding analysis task.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/task_id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskStatusResponse'
+              example:
+                task_id: job_123
+                status: success
+                progress: 100
+        '500':
+          description: Internal Server Error
+
+  /api/v1/ai/related-records/:
+    post:
+      tags:
+        - AI
+      summary: Get related records by similarity
+      description: |
+        Performs a vector search to find similar records (tickets or external connection items) based on the AI summary of the source record.
+        You must provide either `ticket_id` OR both `connection_id` and `record_id`.
+      security:
+        - AccountTokenAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - project_uuid
+              properties:
+                project_uuid:
+                  type: string
+                  description: The unique UUID v4 identifier of the project.
+                ticket_id:
+                  type: integer
+                  description: The ID of the internal ticket. Required if `connection_id` and `record_id` are not provided.
+                connection_id:
+                  type: integer
+                  description: The ID of the external connection. Required if `ticket_id` is not provided.
+                record_id:
+                  type: integer
+                  description: The specific record ID within the connection. Required if `connection_id` is provided.
+              example:
+                project_uuid: 7a358454-2999-47c0-a68d-1087e7ab2d3b
+                ticket_id: 2
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelatedRecordsResponse'
+              example:
+                related_records:
+                  - type: ticket
+                    _id: 2
+                    title: Same issue
+                    content: Similar login failure.
+                    modified_time: '2026-05-27T09:00:00Z'
+                  - type: github_issue
+                    _id: 9
+                    connection_id: 7
+                    title: Similar GitHub issue
+                    content: Root cause appears to be the same.
+                    modified_time: '2026-05-26T08:00:00Z'
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied
+        '404':
+          description: Project or record not found
+        '500':
+          description: Internal Server Error

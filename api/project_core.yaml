@@ -1,0 +1,395 @@
+openapi: 3.0.3
+info:
+  title: SeaTicket Project Core API
+  description: |-
+    Core project search and related-user operations for SeaTicket projects.
+  version: '1.0'
+servers:
+  - url: https://{server}
+    variables:
+      server:
+        default: cloud.seaticket.ai
+
+x-readme:
+  explorer-enabled: true
+  metrics-enabled: false
+  proxy-enabled: false
+
+components:
+  securitySchemes:
+    AccountTokenAuth:
+      type: http
+      scheme: bearer
+      description: This is the Account-Token for authentication.
+
+  parameters:
+    project_uuid:
+      name: project_uuid
+      in: path
+      description: The unique UUID v4 identifier of the project.
+      required: true
+      schema:
+        type: string
+    query:
+      name: query
+      in: query
+      description: Search query string.
+      required: true
+      schema:
+        type: string
+    query_optional:
+      name: query
+      in: query
+      description: Search query string. When empty or omitted, returns all results unfiltered (up to 100 items).
+      required: false
+      schema:
+        type: string
+    query_str:
+      name: query_str
+      in: query
+      description: Search query string used by item search
+      required: true
+      schema:
+        type: string
+    query_type:
+      name: query_type
+      in: query
+      description: Search type used by item search
+      required: true
+      schema:
+        type: string
+
+  schemas:
+    ProjectRelatedUser:
+      type: object
+      description: Common user info related to the project owner or group.
+      properties:
+        email:
+          type: string
+          description: User email address.
+        name:
+          type: string
+          description: Display name of the user.
+        avatar_url:
+          type: string
+          description: Avatar image URL.
+        contact_email:
+          type: string
+          description: Contact email address.
+      example:
+        email: alice@example.com
+        name: Alice
+        avatar_url: https://example.com/avatar/alice.png
+        contact_email: alice@example.com
+    ProjectItem:
+      type: object
+      description: Project result returned by search.
+      properties:
+        id:
+          type: integer
+          description: Internal primary key of the project.
+        uuid:
+          type: string
+          description: Public UUID of the project.
+        workspace_id:
+          type: integer
+          description: Workspace id that owns the project.
+        name:
+          type: string
+          description: Project name.
+        icon:
+          type: string
+          description: Project icon name.
+        color:
+          type: string
+          description: Project color.
+        creator:
+          type: string
+          description: Creator of the project.
+        modifier:
+          type: string
+          description: Last modifier of the project.
+        created_at:
+          type: string
+          description: ISO 8601 creation timestamp.
+        updated_at:
+          type: string
+          description: ISO 8601 last-update timestamp.
+        last_ticket_active_time:
+          type: string
+          description: ISO 8601 timestamp of last ticket activity in the project.
+      example:
+        id: 42
+        uuid: "550e8400-e29b-41d4-a716-446655440000"
+        workspace_id: 12
+        name: Design Docs
+        icon: folder
+        color: '#2F80ED'
+        creator: alice@example.com
+        modifier: bob@example.com
+        created_at: "2024-01-15T10:30:00Z"
+        updated_at: "2024-03-20T14:22:00Z"
+        last_ticket_active_time: "2024-06-01T10:00:00Z"
+    SearchResult:
+      type: object
+      description: Search result returned by tickets-and-documents search.
+      properties:
+        _pk:
+          type: integer
+          description: Primary key of the search result.
+        title:
+          type: string
+          description: Title of the search result.
+        type:
+          type: string
+          description: Type of the search result.
+          enum:
+            - ticket
+            - knowledge_base
+            - site
+            - seafile
+        url:
+          type: string
+          description: URL of the record (only for site type).
+        path:
+          type: string
+          description: File path of the record (only for seafile type).
+        connection_id:
+          type: integer
+          description: Connection ID (only for site and seafile types).
+    ProjectRepository:
+      type: object
+      description: GitHub repository bound to the project.
+      properties:
+        installation_id:
+          type: integer
+          description: GitHub App installation id.
+        id:
+          type: integer
+          description: GitHub repository id.
+        name:
+          type: string
+          description: Repository name.
+        html_url:
+          type: string
+          description: Repository URL.
+        full_name:
+          type: string
+          description: Repository full name.
+      example:
+        installation_id: 123456
+        id: 987654321
+        name: seaqa-web
+        html_url: https://github.com/org/seaqa-web
+        full_name: org/seaqa-web
+
+paths:
+  /api/v1/project/{project_uuid}/related-users/:
+    get:
+      tags:
+        - Project
+      summary: List related users
+      description: Returns the list of users related to the project owner or group.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_list:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProjectRelatedUser'
+              example:
+                user_list:
+                  - email: alice@example.com
+                    name: Alice
+                    avatar_url: https://example.com/avatar/alice.png
+                    contact_email: alice@example.com
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found
+        '500':
+          description: Internal Server Error
+
+  /api/v1/project/items-search/:
+    get:
+      tags:
+        - Project
+      summary: Search project items
+      description: Searches projects by query string and type. Returns matching project items.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/query_str'
+        - $ref: '#/components/parameters/query_type'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProjectItem'
+              example:
+                results:
+                  - id: 42
+                    uuid: "550e8400-e29b-41d4-a716-446655440000"
+                    workspace_id: 12
+                    name: Design Docs
+                    icon: folder
+                    color: '#2F80ED'
+                    creator: alice@example.com
+                    modifier: bob@example.com
+                    created_at: "2026-01-15T10:30:00Z"
+                    updated_at: "2026-03-20T14:22:00Z"
+                    last_ticket_active_time: "2026-05-01T10:00:00Z"
+        '400':
+          description: Bad Request
+        '500':
+          description: Internal Server Error
+
+  /api/v1/project/{project_uuid}/search-tickets/:
+    get:
+      tags:
+        - Project
+      summary: Search tickets
+      description: Searches tickets within a project by query string. Returns matching tickets, columns, and linked record titles.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/query'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tickets:
+                    type: array
+                    items:
+                      type: object
+                  columns:
+                    type: array
+                    items:
+                      type: object
+                  linked_record_titles:
+                    type: object
+              example:
+                tickets:
+                  - _pk: 1
+                    title: Fix login issue
+                    content: Login fails after password reset.
+                    state: open
+                columns:
+                  - key: title
+                    name: Title
+                    type: text
+                linked_record_titles:
+                  "1_2": Ticket #42
+        '400':
+          description: Bad Request
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found
+        '500':
+          description: Internal Server Error
+
+  /api/v1/project/{project_uuid}/search-tickets-and-documents/:
+    get:
+      tags:
+        - Project
+      summary: Search tickets and documents
+      description: Searches tickets and documents (knowledge base, sites, seafile) within a project. When query is empty, returns all results unfiltered.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+        - $ref: '#/components/parameters/query_optional'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SearchResult'
+              example:
+                results:
+                  - _pk: 1
+                    title: Fix login issue
+                    type: ticket
+                  - _pk: 5
+                    title: Developer Guide
+                    type: knowledge_base
+                  - _pk: 10
+                    title: Homepage
+                    url: https://docs.example.com
+                    type: site
+                    connection_id: 3
+                  - _pk: 15
+                    title: architecture.pdf
+                    path: /projects/docs/architecture.pdf
+                    type: seafile
+                    connection_id: 7
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found
+        '500':
+          description: Internal Server Error
+
+  /api/v1/project/{project_uuid}/repositories/:
+    get:
+      tags:
+        - Project
+      summary: List GitHub repositories
+      description: Returns the list of GitHub repositories bound to the project via GitHub App installations.
+      security:
+        - AccountTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/project_uuid'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  repositories:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProjectRepository'
+              example:
+                repositories:
+                  - installation_id: 123456
+                    id: 987654321
+                    name: seaqa-web
+                    html_url: https://github.com/org/seaqa-web
+                    full_name: org/seaqa-web
+        '403':
+          description: Permission denied
+        '404':
+          description: Project not found
+        '500':
+          description: Internal Server Error

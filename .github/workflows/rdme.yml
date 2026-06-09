@@ -23,9 +23,56 @@ jobs:
         with:
           rdme: openapi upload ./api/authentication.yaml --key=${{ secrets.README_API_KEY }}
 
-
-      # ticket operations: user
-      - name: Ticket operations 🚀
+      # project core
+      - name: Project core 🚀
         uses: readmeio/rdme@v10
         with:
-          rdme: openapi upload ./api/ticket_operations.yaml --key=${{ secrets.README_API_KEY }}
+          rdme: openapi upload ./api/project_core.yaml --key=${{ secrets.README_API_KEY }}
+
+      # project management
+      - name: Project management 🚀
+        uses: readmeio/rdme@v10
+        with:
+          rdme: openapi upload ./api/project_management.yaml --key=${{ secrets.README_API_KEY }}
+
+      # ticket operations
+      - name: Ticket & Konwledge base operations 🚀
+        uses: readmeio/rdme@v10
+        with:
+          rdme: openapi upload ./api/ticket_and_konwledge_base_operations.yaml --key=${{ secrets.README_API_KEY }}
+
+      # project connections
+      - name: Project connections 🚀
+        uses: readmeio/rdme@v10
+        with:
+          rdme: openapi upload ./api/project_connections.yaml --key=${{ secrets.README_API_KEY }}
+
+      # project tags & files
+      - name: Project tags & files 🚀
+        uses: readmeio/rdme@v10
+        with:
+          rdme: openapi upload ./api/project_tags_and_files.yaml --key=${{ secrets.README_API_KEY }}
+
+      # project api tokens
+      - name: Project API tokens 🚀
+        uses: readmeio/rdme@v10
+        with:
+          rdme: openapi upload ./api/project_api_tokens.yaml --key=${{ secrets.README_API_KEY }}
+
+      # project agent
+      - name: Project agent 🚀
+        uses: readmeio/rdme@v10
+        with:
+          rdme: openapi upload ./api/project_agent.yaml --key=${{ secrets.README_API_KEY }}
+
+      # project ai
+      - name: Project AI 🚀
+        uses: readmeio/rdme@v10
+        with:
+          rdme: openapi upload ./api/project_ai.yaml --key=${{ secrets.README_API_KEY }}
+
+      # project portal
+      - name: Project portal 🚀
+        uses: readmeio/rdme@v10
+        with:
+          rdme: openapi upload ./api/project_portal.yaml --key=${{ secrets.README_API_KEY }}
